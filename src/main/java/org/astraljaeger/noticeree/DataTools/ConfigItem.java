@@ -4,13 +4,11 @@
 
 package org.astraljaeger.noticeree.DataTools;
 
-import javafx.scene.control.ComboBox;
-
-public class Config {
+public class ConfigItem {
 
     public String token;
 
-    public Config(String token){
+    public ConfigItem(String token){
         this.token = token;
     }
 }

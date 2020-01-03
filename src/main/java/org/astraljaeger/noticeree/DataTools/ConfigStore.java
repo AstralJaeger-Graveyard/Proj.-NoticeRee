@@ -48,6 +48,38 @@ public class ConfigStore {
         encryptor = new StrongTextEncryptor();
         encryptor.setPassword(getHardwareKey());
 
+        String os = System.getProperty("os.name").toLowerCase();
+        String workingDir = "";
+        if(os.contains("win")){
+            workingDir = System.getenv("AppData");
+        }
+        else {
+            workingDir = System.getProperty("user.home");
+            if(os.contains("mac"))
+                workingDir += sep + "Library" + sep + "Application Support";
+        }
+
+        dir = workingDir + sep +
+            Configuration.APP_LOCATION + sep +
+            Configuration.CONFIG_LOCATION + sep;
+        file = dir + fileName;
+        if(!Files.exists(Paths.get(file))){
+            try {
+                Files.createDirectories(Paths.get(dir));
+                Files.createFile(Paths.get(file));
+
+                var empty = new ConfigItem("");
+                Files.write(
+                    Paths.get(file),
+                    encrypt(serializer.toJson(empty)).getBytes(),
+                    StandardOpenOption.CREATE
+                );
+            }catch (IOException e){
+                // TODO
+                System.exit(1);
+            }
+        }
+
         try {
             configFile = Paths.get(Configuration.getAppConfigDirectory() + fileName);
             if (!Files.exists(Paths.get(Configuration.getAppConfigDirectory())))
