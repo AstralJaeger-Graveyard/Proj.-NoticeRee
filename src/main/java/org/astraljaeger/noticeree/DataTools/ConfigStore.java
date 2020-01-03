@@ -75,8 +75,12 @@ public class ConfigStore {
                     StandardOpenOption.CREATE
                 );
             }catch (IOException e){
-                // TODO
-                System.exit(1);
+                var dialog = Utils.createErrorDialog(
+                    e,
+                    "Error creating config file",
+                    e.getMessage()
+                );
+                dialog.showAndWait();
             }
         }
 
