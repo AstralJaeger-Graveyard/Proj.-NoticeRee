@@ -65,8 +65,12 @@ public class ConfigStore {
                     StandardOpenOption.CREATE
                 );
             }catch (IOException e){
-                // TODO
-                System.exit(1);
+                var dialog = Utils.createErrorDialog(
+                    e,
+                    "Error creating config file",
+                    e.getMessage()
+                );
+                dialog.showAndWait();
             }
         }
 
@@ -75,8 +79,12 @@ public class ConfigStore {
             var content = Files.readString(Paths.get(file));
             config = serializer.fromJson(decrypt(content), ConfigItem.class);
         }catch (IOException e){
-            // TODO: Add error display
-            System.exit(2);
+            var dialog = Utils.createErrorDialog(
+                e,
+                "Error reading from file",
+                e.getMessage()
+            );
+            dialog.showAndWait();
         }
     }
 
