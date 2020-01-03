@@ -23,7 +23,7 @@ public class Utils {
         PrintWriter pw = new PrintWriter(sw);
         e.printStackTrace(pw);
         String stacktrace = sw.toString();
-        Label headerLbl = new Label("The Stacktrace what");
+        Label headerLbl = new Label("The Stacktrace was");
         TextArea exceptionText = new TextArea(stacktrace);
         GridPane pane = new GridPane();
         exceptionText.setEditable(false);
