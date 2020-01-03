@@ -4,11 +4,9 @@
 
 package org.astraljaeger.noticeree;
 
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-
 public class Configuration {
 
-    public static String SEPARATOR = FileSystems.getDefault().getSeparator();
-    public static String CONFIG_LOCATION =  SEPARATOR + "config" + SEPARATOR;
+    public static String APP_LOCATION = "NoticeRee";
+    public static String CONFIG_LOCATION = "config";
+    public static String DATA_LOCATION = "data";
 }
