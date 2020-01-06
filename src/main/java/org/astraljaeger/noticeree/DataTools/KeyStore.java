@@ -14,6 +14,8 @@ import java.security.NoSuchAlgorithmException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+
+import jdk.jfr.Description;
 import lombok.Getter;
 import org.apache.commons.codec.DecoderException;
 import org.astraljaeger.noticeree.Configuration;
@@ -21,6 +23,7 @@ import org.astraljaeger.noticeree.Configuration;
 import static org.apache.commons.codec.binary.Hex.encodeHex;
 import static org.apache.commons.codec.binary.Hex.decodeHex;
 
+@Deprecated
 public class KeyStore {
 
     private static KeyStore instance;
@@ -32,7 +35,7 @@ public class KeyStore {
     }
 
     private final String filename = "Key.bson";
-    public static final String ALGORITHM = "AES";
+    public static final String ALGORITHM = "AES/CTR/NoPadding";
     public static final int KEYSIZE = 128;
 
     @Getter

@@ -4,8 +4,10 @@
 
 package org.astraljaeger.noticeree.DataTools;
 
-import static org.apache.commons.codec.binary.Hex.*;
-import static org.apache.commons.io.FileUtils.*;
+import com.google.gson.Gson;
+import org.astraljaeger.noticeree.Configuration;
+import org.astraljaeger.noticeree.Utils;
+import org.jasypt.util.text.StrongTextEncryptor;
 
 import com.google.gson.Gson;
 import org.astraljaeger.noticeree.Configuration;
@@ -46,6 +48,7 @@ public class ConfigStore {
     private Gson serializer;
     private StrongTextEncryptor encryptor;
 
+
     private ConfigStore(){
         serializer = new Gson();
         encryptor = new StrongTextEncryptor();
@@ -56,11 +59,11 @@ public class ConfigStore {
             if (!Files.exists(Paths.get(Configuration.getAppConfigDirectory())))
                 Files.createDirectories(Paths.get(Configuration.getAppConfigDirectory()));
 
-
             if(!Files.exists(configFile)){
                 System.out.println("Creating config file at: " + configFile.toString());
                 ConfigItem emptyItem = new ConfigItem();
                 emptyItem.setToken("");
+                config = emptyItem;
                 saveConfig(emptyItem);
             }
 
@@ -144,7 +147,7 @@ public class ConfigStore {
         try {
             saveConfig(config);
         }
-        catch (CryptoException | IOException e){
+        catch (IOException e){
             flagError("Error storing token in " + fileName, e);
             System.exit(1);
         }
