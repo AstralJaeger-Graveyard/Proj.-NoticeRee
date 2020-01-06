@@ -4,6 +4,9 @@
 
 package org.astraljaeger.noticeree.DataTools;
 
+import static org.apache.commons.codec.binary.Hex.*;
+import static org.apache.commons.io.FileUtils.*;
+
 import com.google.gson.Gson;
 import org.astraljaeger.noticeree.Configuration;
 import org.astraljaeger.noticeree.Utils;
@@ -48,41 +51,16 @@ public class ConfigStore {
         encryptor = new StrongTextEncryptor();
         encryptor.setPassword(getHardwareKey());
 
-        String os = System.getProperty("os.name").toLowerCase();
-        String workingDir = "";
-        if(os.contains("win")){
-            workingDir = System.getenv("AppData");
-        }
-        else {
-            workingDir = System.getProperty("user.home");
-            if(os.contains("mac"))
-                workingDir += sep + "Library" + sep + "Application Support";
-        }
-
-        dir = workingDir + sep +
-            Configuration.APP_LOCATION + sep +
-            Configuration.CONFIG_LOCATION + sep;
-        file = dir + fileName;
-        if(!Files.exists(Paths.get(file))){
-            try {
-                Files.createDirectories(Paths.get(dir));
-                Files.createFile(Paths.get(file));
-
-                var empty = new ConfigItem("");
-                Files.write(
-                    Paths.get(file),
-                    encrypt(serializer.toJson(empty)).getBytes(),
-                    StandardOpenOption.CREATE
-                );
-            }catch (IOException e){
-                var dialog = Utils.createErrorDialog(
-                    e,
-                    "Error creating config file",
-                    e.getMessage()
-                );
-                dialog.showAndWait();
+        try {
+            configFile = Paths.get(Configuration.getAppConfigDirectory() + fileName);
+            if (!Files.exists(Paths.get(Configuration.getAppConfigDirectory()))) {
+                Files.createDirectories(Paths.get(Configuration.getAppConfigDirectory()));
             }
-        }
+
+            if(!Files.exists(configFile)){
+                ConfigItem emptyItem = new ConfigItem();
+                saveConfig(emptyItem);
+            }
 
         try {
             configFile = Paths.get(Configuration.getAppConfigDirectory() + fileName);
