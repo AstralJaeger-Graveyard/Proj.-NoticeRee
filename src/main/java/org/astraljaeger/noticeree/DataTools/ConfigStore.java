@@ -4,34 +4,26 @@
 
 package org.astraljaeger.noticeree.DataTools;
 
-import static org.apache.commons.codec.binary.Hex.*;
-import static org.apache.commons.io.FileUtils.*;
-
 import com.google.gson.Gson;
+import org.astraljaeger.noticeree.Configuration;
+import org.astraljaeger.noticeree.Utils;
+import org.jasypt.util.text.StrongTextEncryptor;
+
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.security.InvalidKeyException;
-import java.security.Key;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
+import java.util.Collections;
+import java.util.Enumeration;
 
-import org.apache.commons.codec.DecoderException;
-import org.apache.commons.codec.EncoderException;
-import org.apache.commons.codec.binary.Hex;
-import org.astraljaeger.noticeree.Configuration;
-import org.astraljaeger.noticeree.Utils;
-
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.spec.IvParameterSpec;
+import static org.apache.commons.io.FileUtils.readFileToByteArray;
+import static org.apache.commons.io.FileUtils.writeStringToFile;
 
 public class ConfigStore {
 
@@ -43,25 +35,29 @@ public class ConfigStore {
         return instance;
     }
 
-    private String fileName = "config.ebson";
+    private String fileName = "config.ejson";
     private Path configFile;
 
     private ConfigItem config;
     private Gson serializer;
+    private StrongTextEncryptor encryptor;
+
 
     private ConfigStore(){
         serializer = new Gson();
+        encryptor = new StrongTextEncryptor();
+        encryptor.setPassword(getHardwareKey());
 
         try {
             configFile = Paths.get(Configuration.getAppConfigDirectory() + fileName);
             if (!Files.exists(Paths.get(Configuration.getAppConfigDirectory())))
                 Files.createDirectories(Paths.get(Configuration.getAppConfigDirectory()));
 
-
             if(!Files.exists(configFile)){
                 System.out.println("Creating config file at: " + configFile.toString());
                 ConfigItem emptyItem = new ConfigItem();
                 emptyItem.setToken("");
+                config = emptyItem;
                 saveConfig(emptyItem);
             }
 
@@ -70,9 +66,6 @@ public class ConfigStore {
         catch (IOException e){
             flagError("Error accessing " + fileName, e);
             System.exit(1);
-        }
-        catch (CryptoException e){
-
         }
     }
 
@@ -83,6 +76,57 @@ public class ConfigStore {
             e.getMessage()
         );
         dialog.showAndWait();
+    }
+
+    private String getHardwareKey(){
+        try {
+            Enumeration<NetworkInterface> nics = NetworkInterface.getNetworkInterfaces();
+            InetAddress publicAdr = null;
+            boolean breakIt = false;
+            for(NetworkInterface nic: Collections.list(nics)){
+                Enumeration<InetAddress> inetAddresses = nic.getInetAddresses();
+                for(InetAddress adr : Collections.list(inetAddresses)){
+                    if(nic.getHardwareAddress() != null && (!adr.isAnyLocalAddress() || !adr.isLoopbackAddress())){
+                        publicAdr = adr;
+                        breakIt = true;
+                    }
+
+                    if(breakIt)
+                        break;
+                }
+
+                if(breakIt)
+                    break;
+            }
+
+            if(publicAdr != null){
+                NetworkInterface nic = NetworkInterface.getByInetAddress(publicAdr);
+                String mac = macToString(nic.getHardwareAddress());
+                return mac;
+            }
+        } catch (SocketException e) {
+            e.printStackTrace();
+        }
+
+        RuntimeMXBean rmx = ManagementFactory.getRuntimeMXBean();
+        String jvm = rmx.getName();
+        String[] parts = jvm.split("@");
+        if (parts.length > 0) {
+            String name = parts[1];
+            if (name != null && !name.isEmpty()) {
+                System.out.println("Name: " + name);
+                return name;
+            }
+        }
+        return System.getenv("COMPUTERNAME");
+    }
+
+    private String macToString(byte[] bytes){
+        StringBuilder builder = new StringBuilder();
+        for(int i = 0; i < bytes.length; i++){
+            builder.append(String.format("%02X%s", bytes[i], (i < bytes.length - 1) ? "-": ""));
+        }
+        return builder.toString();
     }
 
     public ConfigItem getConfigItem(){
@@ -102,52 +146,22 @@ public class ConfigStore {
         try {
             saveConfig(config);
         }
-        catch (CryptoException | IOException e){
+        catch (IOException e){
             flagError("Error storing token in " + fileName, e);
             System.exit(1);
         }
     }
 
-    private void saveConfig(ConfigItem item) throws IOException, CryptoException {
+    private void saveConfig(ConfigItem item) throws IOException {
         String serialized = serializer.toJson(item);
-        String encrypted = encrypt(serialized);
-        writeStringToFile(configFile.toFile(), String.valueOf(encrypted) , StandardCharsets.UTF_8);
+        String encrypted = encryptor.encrypt(serialized);
+        writeStringToFile(configFile.toFile(), encrypted , StandardCharsets.UTF_8);
     }
 
-    private ConfigItem loadConfig() throws IOException, CryptoException {
-        String data = new String(readFileToByteArray(configFile.toFile()));
-        String decrypted = decrypt(data);
+    private ConfigItem loadConfig() throws IOException {
+        String raw = new String(readFileToByteArray(configFile.toFile()));
+        String decrypted = encryptor.decrypt(raw);
         return serializer.fromJson(decrypted, ConfigItem.class);
     }
 
-    private String decrypt(String encrypted) throws CryptoException{
-        try {
-            Key key = KeyStore.getInstance().getKey();
-            Cipher cipher = Cipher.getInstance(KeyStore.ALGORITHM);
-            cipher.init(Cipher.DECRYPT_MODE, key);
-            return String.valueOf(cipher.doFinal(encrypted.getBytes()));
-        }catch (NoSuchAlgorithmException |
-                NoSuchPaddingException |
-                InvalidKeyException |
-                BadPaddingException |
-                IllegalBlockSizeException e){
-            throw new CryptoException("Error decrypting " + fileName, e);
-        }
-    }
-
-    private String encrypt(String plain) throws CryptoException {
-        try{
-            Key key = KeyStore.getInstance().getKey();
-            Cipher cipher = Cipher.getInstance(KeyStore.ALGORITHM);
-            cipher.init(Cipher.ENCRYPT_MODE, key);
-            byte[] encrypted = cipher.doFinal(plain.getBytes());
-            return String.valueOf(encrypted);
-        }catch (NoSuchAlgorithmException |
-                NoSuchPaddingException |
-                InvalidKeyException |
-                BadPaddingException |
-                IllegalBlockSizeException e){
-            throw new CryptoException("Error encrypting " + fileName, e);
-        }
-    }
 }
