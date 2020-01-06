@@ -48,7 +48,6 @@ public class ConfigStore {
     private Gson serializer;
     private StrongTextEncryptor encryptor;
 
-
     private ConfigStore(){
         serializer = new Gson();
         encryptor = new StrongTextEncryptor();
@@ -61,10 +60,9 @@ public class ConfigStore {
 
             if(!Files.exists(configFile)){
                 System.out.println("Creating config file at: " + configFile.toString());
-                ConfigItem emptyItem = new ConfigItem();
-                emptyItem.setToken("");
-                config = emptyItem;
-                saveConfig(emptyItem);
+                config = new HashMap<>();
+                config.put("token", "");
+                saveConfig();
             }
 
         try {
