@@ -5,10 +5,14 @@
 package org.astraljaeger.noticeree;
 
 import java.util.Arrays;
+import java.util.Collections;
+
 import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.stage.Stage;
 import org.astraljaeger.noticeree.DataTools.ConfigStore;
-import org.astraljaeger.noticeree.DataTools.KeyStore;
 
 public class NoticeRee extends Application {
 
@@ -23,10 +27,17 @@ public class NoticeRee extends Application {
     public void start(Stage primaryStage) {
         System.out.println(Arrays.toString(arguments));
 
-        ConfigStore store = ConfigStore.getInstance();
-        store.setToken("oauth:zzyyl9236vdhssmw79kbvos7n7l1si");
-
-
-        System.exit(0);
+        try {
+            final FXMLLoader loader = new FXMLLoader(getClass().getResource("/MainWindow.fxml"));
+            final Parent root = loader.load();
+            MainController controller = loader.getController();
+            Scene scene = new Scene(root);
+            primaryStage.setTitle("Proj. NoticeRee");
+            primaryStage.setScene(scene);
+            primaryStage.show();
+        }
+        catch (Exception e){
+            System.exit(1);
+        }
     }
 }
