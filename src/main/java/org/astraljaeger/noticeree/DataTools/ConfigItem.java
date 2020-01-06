@@ -4,11 +4,15 @@
 
 package org.astraljaeger.noticeree.DataTools;
 
+import lombok.Getter;
+import lombok.Setter;
+
 public class ConfigItem {
 
 
-
-    public String token;
+    @Getter
+    @Setter
+    private String token;
 
     public ConfigItem(){
 

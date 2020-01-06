@@ -53,12 +53,14 @@ public class ConfigStore {
 
         try {
             configFile = Paths.get(Configuration.getAppConfigDirectory() + fileName);
-            if (!Files.exists(Paths.get(Configuration.getAppConfigDirectory()))) {
+            if (!Files.exists(Paths.get(Configuration.getAppConfigDirectory())))
                 Files.createDirectories(Paths.get(Configuration.getAppConfigDirectory()));
-            }
+
 
             if(!Files.exists(configFile)){
+                System.out.println("Creating config file at: " + configFile.toString());
                 ConfigItem emptyItem = new ConfigItem();
+                emptyItem.setToken("");
                 saveConfig(emptyItem);
             }
 
@@ -142,7 +144,7 @@ public class ConfigStore {
         try {
             saveConfig(config);
         }
-        catch (IOException e){
+        catch (CryptoException | IOException e){
             flagError("Error storing token in " + fileName, e);
             System.exit(1);
         }
