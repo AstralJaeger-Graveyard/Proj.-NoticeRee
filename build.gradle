@@ -59,6 +59,8 @@ task destroyConfig(type: Delete){
     }
 }
 
+run.doFirst {destroyConfig}
+
 task greet{
     group  = 'greetings'
     description = 'Greets you'

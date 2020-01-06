@@ -32,8 +32,8 @@ public class KeyStore {
     }
 
     private final String filename = "Key.bson";
-    private final String ALGORITHM = "AES";
-    private final int KEYSIZE = 256;
+    public static final String ALGORITHM = "AES";
+    public static final int KEYSIZE = 128;
 
     @Getter
     private SecretKey key;

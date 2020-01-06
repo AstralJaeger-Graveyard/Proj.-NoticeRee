@@ -9,15 +9,29 @@ import static org.apache.commons.io.FileUtils.*;
 
 import com.google.gson.Gson;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.security.InvalidKeyException;
+import java.security.Key;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
+
 import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.EncoderException;
+import org.apache.commons.codec.binary.Hex;
 import org.astraljaeger.noticeree.Configuration;
 import org.astraljaeger.noticeree.Utils;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.IvParameterSpec;
 
 public class ConfigStore {
 
@@ -40,12 +54,14 @@ public class ConfigStore {
 
         try {
             configFile = Paths.get(Configuration.getAppConfigDirectory() + fileName);
-            if (!Files.exists(Paths.get(Configuration.getAppConfigDirectory()))) {
+            if (!Files.exists(Paths.get(Configuration.getAppConfigDirectory())))
                 Files.createDirectories(Paths.get(Configuration.getAppConfigDirectory()));
-            }
+
 
             if(!Files.exists(configFile)){
+                System.out.println("Creating config file at: " + configFile.toString());
                 ConfigItem emptyItem = new ConfigItem();
+                emptyItem.setToken("");
                 saveConfig(emptyItem);
             }
 
@@ -55,9 +71,8 @@ public class ConfigStore {
             flagError("Error accessing " + fileName, e);
             System.exit(1);
         }
-        catch (DecoderException e){
-            flagError("Error decoding " + fileName, e);
-            System.exit(1);
+        catch (CryptoException e){
+
         }
     }
 
@@ -75,35 +90,64 @@ public class ConfigStore {
     }
 
     public void setToken(String token){
-        config.token = token;
+        config.setToken(token);
+        saveConfig();
+    }
+
+    public String getToken(){
+        return config.getToken();
+    }
+
+    private void saveConfig(){
         try {
             saveConfig(config);
         }
-        catch (IOException e){
+        catch (CryptoException | IOException e){
             flagError("Error storing token in " + fileName, e);
             System.exit(1);
         }
     }
 
-    private void saveConfig(ConfigItem item) throws IOException{
+    private void saveConfig(ConfigItem item) throws IOException, CryptoException {
         String serialized = serializer.toJson(item);
         String encrypted = encrypt(serialized);
-        char[] encoded = encodeHex(encrypted.getBytes());
-        writeStringToFile(configFile.toFile(), encrypted, StandardCharsets.UTF_8);
+        writeStringToFile(configFile.toFile(), String.valueOf(encrypted) , StandardCharsets.UTF_8);
     }
 
-    private ConfigItem loadConfig() throws IOException, DecoderException {
+    private ConfigItem loadConfig() throws IOException, CryptoException {
         String data = new String(readFileToByteArray(configFile.toFile()));
-        byte[] decoded = decodeHex(data);
-        String plain = decrypt(String.valueOf(decoded));
-        return serializer.fromJson(plain, ConfigItem.class);
+        String decrypted = decrypt(data);
+        return serializer.fromJson(decrypted, ConfigItem.class);
     }
 
-    private String decrypt(String cipher){
-        return cipher;
+    private String decrypt(String encrypted) throws CryptoException{
+        try {
+            Key key = KeyStore.getInstance().getKey();
+            Cipher cipher = Cipher.getInstance(KeyStore.ALGORITHM);
+            cipher.init(Cipher.DECRYPT_MODE, key);
+            return String.valueOf(cipher.doFinal(encrypted.getBytes()));
+        }catch (NoSuchAlgorithmException |
+                NoSuchPaddingException |
+                InvalidKeyException |
+                BadPaddingException |
+                IllegalBlockSizeException e){
+            throw new CryptoException("Error decrypting " + fileName, e);
+        }
     }
 
-    private String encrypt(String plain){
-        return plain;
+    private String encrypt(String plain) throws CryptoException {
+        try{
+            Key key = KeyStore.getInstance().getKey();
+            Cipher cipher = Cipher.getInstance(KeyStore.ALGORITHM);
+            cipher.init(Cipher.ENCRYPT_MODE, key);
+            byte[] encrypted = cipher.doFinal(plain.getBytes());
+            return String.valueOf(encrypted);
+        }catch (NoSuchAlgorithmException |
+                NoSuchPaddingException |
+                InvalidKeyException |
+                BadPaddingException |
+                IllegalBlockSizeException e){
+            throw new CryptoException("Error encrypting " + fileName, e);
+        }
     }
 }
