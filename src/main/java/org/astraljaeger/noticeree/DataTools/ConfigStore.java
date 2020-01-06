@@ -9,11 +9,6 @@ import org.astraljaeger.noticeree.Configuration;
 import org.astraljaeger.noticeree.Utils;
 import org.jasypt.util.text.StrongTextEncryptor;
 
-import com.google.gson.Gson;
-import org.astraljaeger.noticeree.Configuration;
-import org.astraljaeger.noticeree.Utils;
-import org.jasypt.util.text.StrongTextEncryptor;
-
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
@@ -52,18 +47,6 @@ public class ConfigStore {
         serializer = new Gson();
         encryptor = new StrongTextEncryptor();
         encryptor.setPassword(getHardwareKey());
-
-        try {
-            configFile = Paths.get(Configuration.getAppConfigDirectory() + fileName);
-            if (!Files.exists(Paths.get(Configuration.getAppConfigDirectory())))
-                Files.createDirectories(Paths.get(Configuration.getAppConfigDirectory()));
-
-            if(!Files.exists(configFile)){
-                System.out.println("Creating config file at: " + configFile.toString());
-                config = new HashMap<>();
-                config.put("token", "");
-                saveConfig();
-            }
 
         try {
             configFile = Paths.get(Configuration.getAppConfigDirectory() + fileName);
