@@ -21,6 +21,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashMap;
 
 import static org.apache.commons.io.FileUtils.readFileToByteArray;
 import static org.apache.commons.io.FileUtils.writeStringToFile;
@@ -38,10 +39,9 @@ public class ConfigStore {
     private String fileName = "config.ejson";
     private Path configFile;
 
-    private ConfigItem config;
+    private HashMap<String, String> config;
     private Gson serializer;
     private StrongTextEncryptor encryptor;
-
 
     private ConfigStore(){
         serializer = new Gson();
@@ -55,10 +55,9 @@ public class ConfigStore {
 
             if(!Files.exists(configFile)){
                 System.out.println("Creating config file at: " + configFile.toString());
-                ConfigItem emptyItem = new ConfigItem();
-                emptyItem.setToken("");
-                config = emptyItem;
-                saveConfig(emptyItem);
+                config = new HashMap<>();
+                config.put("token", "");
+                saveConfig();
             }
 
             config = loadConfig();
@@ -81,28 +80,11 @@ public class ConfigStore {
     private String getHardwareKey(){
         try {
             Enumeration<NetworkInterface> nics = NetworkInterface.getNetworkInterfaces();
-            InetAddress publicAdr = null;
-            boolean breakIt = false;
             for(NetworkInterface nic: Collections.list(nics)){
                 Enumeration<InetAddress> inetAddresses = nic.getInetAddresses();
-                for(InetAddress adr : Collections.list(inetAddresses)){
-                    if(nic.getHardwareAddress() != null && (!adr.isAnyLocalAddress() || !adr.isLoopbackAddress())){
-                        publicAdr = adr;
-                        breakIt = true;
-                    }
-
-                    if(breakIt)
-                        break;
-                }
-
-                if(breakIt)
-                    break;
-            }
-
-            if(publicAdr != null){
-                NetworkInterface nic = NetworkInterface.getByInetAddress(publicAdr);
-                String mac = macToString(nic.getHardwareAddress());
-                return mac;
+                for(InetAddress adr : Collections.list(inetAddresses))
+                    if(nic.getHardwareAddress() != null && (!adr.isAnyLocalAddress() || !adr.isLoopbackAddress()))
+                        return macToString(nic.getHardwareAddress());
             }
         } catch (SocketException e) {
             e.printStackTrace();
@@ -129,17 +111,17 @@ public class ConfigStore {
         return builder.toString();
     }
 
-    public ConfigItem getConfigItem(){
+    public HashMap<String, String> getConfigItem(){
         return config;
     }
 
     public void setToken(String token){
-        config.setToken(token);
+        config.put("token", token);
         saveConfig();
     }
 
     public String getToken(){
-        return config.getToken();
+        return config.get("token");
     }
 
     private void saveConfig(){
@@ -152,16 +134,15 @@ public class ConfigStore {
         }
     }
 
-    private void saveConfig(ConfigItem item) throws IOException {
+    private void saveConfig(HashMap<String, String> item) throws IOException {
         String serialized = serializer.toJson(item);
         String encrypted = encryptor.encrypt(serialized);
         writeStringToFile(configFile.toFile(), encrypted , StandardCharsets.UTF_8);
     }
 
-    private ConfigItem loadConfig() throws IOException {
+    private HashMap<String, String> loadConfig() throws IOException {
         String raw = new String(readFileToByteArray(configFile.toFile()));
         String decrypted = encryptor.decrypt(raw);
-        return serializer.fromJson(decrypted, ConfigItem.class);
+        return serializer.fromJson(decrypted, HashMap.class);
     }
-
 }
