@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright(c) AstralJaeger 2020.
  */
 
 package org.astraljaeger.noticeree.DataTools;

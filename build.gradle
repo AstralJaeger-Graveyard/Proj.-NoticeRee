@@ -1,4 +1,8 @@
 
+/*
+ * Copyright(c) AstralJaeger 2020.
+ */
+
 plugins {
     id 'java'
     id 'application'
@@ -13,6 +17,7 @@ repositories {
     mavenCentral()
     jcenter()
     maven { url "https://oss.jfrog.org/artifactory/libs-release"}
+    maven { url "http://projectlombok.org/mavenrepo"}
 }
 
 dependencies {
@@ -23,8 +28,18 @@ dependencies {
     implementation 'io.reactivex.rxjava2:rxjava:2.2.10'
     implementation 'io.reactivex.rxjava2:rxjavafx:2.2.2'
     implementation 'org.controlsfx:controlsfx:11.0.1'
+    // Google dependencies
     implementation 'com.google.code.gson:gson:2.8.6'
     implementation 'com.google.guava:guava:28.0-jre'
+    // Apache Commons
+    implementation 'commons-codec:commons-codec:1.13'
+    implementation 'commons-io:commons-io:2.6'
+    // Project Lombok
+    implementation 'org.projectlombok:lombok:0.9.2'
+    compileOnly 'org.projectlombok:lombok:1.18.10'
+
+    annotationProcessor 'org.projectlombok:lombok:1.18.10'
+
 }
 
 javafx {
@@ -34,6 +49,14 @@ javafx {
 
 application {
     mainClassName = 'org.astraljaeger.noticeree.NoticeRee'
+}
+
+task destroyConfig(type: Delete){
+    group = 'build'
+    description = 'Destroys old configuration files'
+    doFirst{
+        delete 'C:\\Users\\Felix\\AppData\\Roaming\\NoticeRee\\config'
+    }
 }
 
 task greet{

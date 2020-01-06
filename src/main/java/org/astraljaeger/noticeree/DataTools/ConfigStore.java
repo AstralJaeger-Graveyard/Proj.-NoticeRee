@@ -1,16 +1,21 @@
 /*
- * Copyright (c) 2020.
+ * Copyright(c) AstralJaeger 2020.
  */
 
 package org.astraljaeger.noticeree.DataTools;
 
+import static org.apache.commons.codec.binary.Hex.*;
+import static org.apache.commons.io.FileUtils.*;
+
 import com.google.gson.Gson;
-import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.logging.Logger;
+import org.apache.commons.codec.DecoderException;
 import org.astraljaeger.noticeree.Configuration;
 import org.astraljaeger.noticeree.Utils;
 
@@ -24,68 +29,45 @@ public class ConfigStore {
         return instance;
     }
 
-    private Logger log;
+    private String fileName = "config.ebson";
+    private Path configFile;
 
-    private String file;
-    private String dir;
-
-    private String fileName = "config.eson";
     private ConfigItem config;
     private Gson serializer;
 
     private ConfigStore(){
-        // log = Logger.getLogger(this.getClass().getName());
         serializer = new Gson();
-        char sep = File.separatorChar;
-
-        String os = System.getProperty("os.name").toLowerCase();
-        String workingDir = "";
-        if(os.contains("win")){
-            workingDir = System.getenv("AppData");
-        }
-        else {
-            workingDir = System.getProperty("user.home");
-            if(os.contains("mac"))
-                workingDir += sep + "Library" + sep + "Application Support";
-        }
-
-        dir = workingDir + sep +
-            Configuration.APP_LOCATION + sep +
-            Configuration.CONFIG_LOCATION + sep;
-        file = dir + fileName;
-        if(!Files.exists(Paths.get(file))){
-            try {
-                Files.createDirectories(Paths.get(dir));
-                Files.createFile(Paths.get(file));
-
-                var empty = new ConfigItem("");
-                Files.write(
-                    Paths.get(file),
-                    encrypt(serializer.toJson(empty)).getBytes(),
-                    StandardOpenOption.CREATE
-                );
-            }catch (IOException e){
-                var dialog = Utils.createErrorDialog(
-                    e,
-                    "Error creating config file",
-                    e.getMessage()
-                );
-                dialog.showAndWait();
-            }
-        }
 
         try {
+            configFile = Paths.get(Configuration.getAppConfigDirectory() + fileName);
+            if (!Files.exists(Paths.get(Configuration.getAppConfigDirectory()))) {
+                Files.createDirectories(Paths.get(Configuration.getAppConfigDirectory()));
+            }
 
-            var content = Files.readString(Paths.get(file));
-            config = serializer.fromJson(decrypt(content), ConfigItem.class);
-        }catch (IOException e){
-            var dialog = Utils.createErrorDialog(
-                e,
-                "Error reading from file",
-                e.getMessage()
-            );
-            dialog.showAndWait();
+            if(!Files.exists(configFile)){
+                ConfigItem emptyItem = new ConfigItem();
+                saveConfig(emptyItem);
+            }
+
+            config = loadConfig();
         }
+        catch (IOException e){
+            flagError("Error accessing " + fileName, e);
+            System.exit(1);
+        }
+        catch (DecoderException e){
+            flagError("Error decoding " + fileName, e);
+            System.exit(1);
+        }
+    }
+
+    private void flagError(String title, Exception e){
+        var dialog = Utils.createErrorDialog(
+            e,
+            title,
+            e.getMessage()
+        );
+        dialog.showAndWait();
     }
 
     public ConfigItem getConfigItem(){
@@ -94,7 +76,27 @@ public class ConfigStore {
 
     public void setToken(String token){
         config.token = token;
-        writeFile(encrypt(serializer.toJson(config)));
+        try {
+            saveConfig(config);
+        }
+        catch (IOException e){
+            flagError("Error storing token in " + fileName, e);
+            System.exit(1);
+        }
+    }
+
+    private void saveConfig(ConfigItem item) throws IOException{
+        String serialized = serializer.toJson(item);
+        String encrypted = encrypt(serialized);
+        char[] encoded = encodeHex(encrypted.getBytes());
+        writeStringToFile(configFile.toFile(), encrypted, StandardCharsets.UTF_8);
+    }
+
+    private ConfigItem loadConfig() throws IOException, DecoderException {
+        String data = new String(readFileToByteArray(configFile.toFile()));
+        byte[] decoded = decodeHex(data);
+        String plain = decrypt(String.valueOf(decoded));
+        return serializer.fromJson(plain, ConfigItem.class);
     }
 
     private String decrypt(String cipher){
@@ -103,22 +105,5 @@ public class ConfigStore {
 
     private String encrypt(String plain){
         return plain;
-    }
-
-    private void writeFile(String content){
-        try {
-            Files.write(
-                Paths.get(file),
-                encrypt(content).getBytes(),
-                StandardOpenOption.TRUNCATE_EXISTING
-            );
-        }catch (IOException e){
-            var dialog = Utils.createErrorDialog(
-              e,
-              "Error writing to file",
-              "An error occured while trying to write to the config file"
-            );
-            dialog.showAndWait();
-        }
     }
 }
