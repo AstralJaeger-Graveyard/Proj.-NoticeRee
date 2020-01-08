@@ -5,14 +5,13 @@
 package org.astraljaeger.noticeree;
 
 import java.util.Arrays;
-import java.util.Collections;
 
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import org.astraljaeger.noticeree.DataTools.ConfigStore;
+import org.astraljaeger.noticeree.Controllers.MainController;
 
 public class NoticeRee extends Application {
 
