@@ -1,11 +1,11 @@
-name: Java CI
-
+name: Build
+# This workflow is triggered on pushed to the repository
 on: [push]
 
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
     - uses: actions/checkout@v1
@@ -15,4 +15,3 @@ jobs:
         java-version: 11
     - name: Build with Gradle
       run: ./gradlew build
-      
