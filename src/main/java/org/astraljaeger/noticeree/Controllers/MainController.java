@@ -145,7 +145,9 @@ public class MainController {
             }
         }
 
-        usernameLink.setText(credential.getUserName());
+        System.out.println("Username: " + result.getUserName());
+
+        usernameLink.setText(result.getUserName());
         usernameLink.setOnAction(event -> {
             if (Desktop.isDesktopSupported()) {
                 Desktop desktop = Desktop.getDesktop();
