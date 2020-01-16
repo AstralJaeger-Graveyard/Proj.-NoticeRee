@@ -69,11 +69,11 @@ task destroyConfig(type: Delete){
     group = 'build'
     description = 'Destroys old configuration files'
     doFirst{
-        delete 'C:\\Users\\Felix\\AppData\\Roaming\\NoticeRee\\config'
+        path = "C:\\Users\\Felix\\AppData\\Roaming\\NoticeRee\\config"
+        delete path
+        println "destroyed $path"
     }
 }
-
-run.doFirst {destroyConfig}
 
 task greet{
     group  = 'greetings'
