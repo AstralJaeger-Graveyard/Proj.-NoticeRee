@@ -43,6 +43,9 @@ public class ConfigStore {
     private Gson serializer;
     private StrongTextEncryptor encryptor;
 
+    private final String TOKEN_KEY = "token";
+    private final String CHANNEL_KEY = "channel";
+
     private ConfigStore(){
         serializer = new Gson();
         encryptor = new StrongTextEncryptor();
@@ -56,7 +59,8 @@ public class ConfigStore {
             if(!Files.exists(configFile)){
                 System.out.println("Creating config file at: " + configFile.toString());
                 config = new HashMap<>();
-                config.put("token", "");
+                config.put(TOKEN_KEY, "");
+                config.put(CHANNEL_KEY, "parkibricks");
                 saveConfig();
             }
 
@@ -68,11 +72,40 @@ public class ConfigStore {
         }
     }
 
+    public HashMap<String, String> getConfigItem(){
+        return config;
+    }
+
+    public void setToken(String token){
+        config.put(TOKEN_KEY, token);
+        saveConfig();
+    }
+
+    public String getToken(){
+        return config.get(TOKEN_KEY);
+    }
+
+    public void setChannel(String channel){
+        config.put(CHANNEL_KEY, channel);
+        saveConfig();
+    }
+
+    public String getChannel(){
+        return config.get(CHANNEL_KEY);
+    }
+
+
+
+    // TODO: Add getters and setters for other properties
+
+
+    // Private methods
+
     private void flagError(String title, Exception e){
         var dialog = Utils.createErrorDialog(
-            e,
-            title,
-            e.getMessage()
+                e,
+                title,
+                e.getMessage()
         );
         dialog.showAndWait();
     }
@@ -109,19 +142,6 @@ public class ConfigStore {
             builder.append(String.format("%02X%s", bytes[i], (i < bytes.length - 1) ? "-": ""));
         }
         return builder.toString();
-    }
-
-    public HashMap<String, String> getConfigItem(){
-        return config;
-    }
-
-    public void setToken(String token){
-        config.put("token", token);
-        saveConfig();
-    }
-
-    public String getToken(){
-        return config.get("token");
     }
 
     private void saveConfig(){
