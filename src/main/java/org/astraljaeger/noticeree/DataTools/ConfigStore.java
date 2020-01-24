@@ -9,6 +9,7 @@ import org.astraljaeger.noticeree.Configuration;
 import org.astraljaeger.noticeree.Utils;
 import org.jasypt.util.text.StrongTextEncryptor;
 
+import javax.sound.sampled.Mixer;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
@@ -22,12 +23,14 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.logging.Logger;
 
 import static org.apache.commons.io.FileUtils.readFileToByteArray;
 import static org.apache.commons.io.FileUtils.writeStringToFile;
 
 public class ConfigStore {
 
+    private static final Logger logger = Logger.getLogger(ConfigStore.class.getSimpleName());
     private static ConfigStore instance;
 
     public static ConfigStore getInstance(){
@@ -44,10 +47,13 @@ public class ConfigStore {
     private StrongTextEncryptor encryptor;
 
     private final String TOKEN_KEY = "token";
+    private final String USERNAME_KEY = "username";
     private final String CHANNEL_KEY = "channel";
+    private final String DEFAULT_OUTPUT_DEVICE = "default_output_device";
 
     private ConfigStore(){
         serializer = new Gson();
+
         encryptor = new StrongTextEncryptor();
         encryptor.setPassword(getHardwareKey());
 
@@ -60,7 +66,9 @@ public class ConfigStore {
                 System.out.println("Creating config file at: " + configFile.toString());
                 config = new HashMap<>();
                 config.put(TOKEN_KEY, "");
-                config.put(CHANNEL_KEY, "parkibricks");
+                config.put(CHANNEL_KEY, "");
+                config.put(USERNAME_KEY, "");
+                config.put(DEFAULT_OUTPUT_DEVICE, null);
                 saveConfig();
             }
 
@@ -77,24 +85,55 @@ public class ConfigStore {
     }
 
     public void setToken(String token){
+        logger.info("Storing new token: " + "*".repeat(token.length()));
         config.put(TOKEN_KEY, token);
         saveConfig();
     }
 
     public String getToken(){
+        logger.fine("Revealing token: " + "*".repeat(config.get(TOKEN_KEY).length()));
         return config.get(TOKEN_KEY);
     }
 
+    public void setUsername(String username){
+        logger.info("Storing new username: " + username);
+        config.put(USERNAME_KEY, username);
+        saveConfig();
+    }
+
+    public String getUsername(){
+        return config.get(USERNAME_KEY);
+    }
+
     public void setChannel(String channel){
+        logger.info("Storing new channel: " + channel);
         config.put(CHANNEL_KEY, channel);
         saveConfig();
     }
 
     public String getChannel(){
-        return config.get(CHANNEL_KEY);
+        String channel = config.get(CHANNEL_KEY);
+        logger.fine("Revealing channel name: " + channel);
+        return channel;
     }
 
+    public void setDefaultOutputDevice(Mixer.Info device){
+        logger.info("Storing new default playback device: " + device.getName());
+        String serialized = serializer.toJson(device);
+        logger.fine("Serialized: " + serialized);
+        config.put(DEFAULT_OUTPUT_DEVICE, serialized);
+        saveConfig();
+    }
 
+    public Mixer.Info getDefaultOutputDevice(){
+        String serialized = config.get(DEFAULT_OUTPUT_DEVICE);
+        if(serialized == null){
+            return null;
+        }
+        Mixer.Info info = serializer.fromJson(serialized, Mixer.Info.class);
+        logger.fine("Revealing stored playback device: " + info.getName());
+        return info;
+    }
 
     // TODO: Add getters and setters for other properties
 
