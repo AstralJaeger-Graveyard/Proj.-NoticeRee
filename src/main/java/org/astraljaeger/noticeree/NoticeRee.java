@@ -4,14 +4,14 @@
 
 package org.astraljaeger.noticeree;
 
-import java.util.Arrays;
-
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import org.astraljaeger.noticeree.Controllers.MainController;
+
+import java.util.Arrays;
 
 public class NoticeRee extends Application {
 
@@ -30,6 +30,7 @@ public class NoticeRee extends Application {
             final FXMLLoader loader = new FXMLLoader(getClass().getResource("/MainWindow.fxml"));
             final Parent root = loader.load();
             MainController controller = loader.getController();
+            controller.setPrimaryStage(primaryStage);
             Scene scene = new Scene(root);
             primaryStage.setTitle("Proj. NoticeRee");
             primaryStage.setScene(scene);

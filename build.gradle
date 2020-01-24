@@ -58,20 +58,20 @@ dependencies {
 
 javafx {
     version = '11.0.2'
-    modules = ['javafx.controls', 'javafx.fxml']
+    modules = ['javafx.controls', 'javafx.fxml', 'javafx.media']
 }
 
 application {
     mainClassName = 'org.astraljaeger.noticeree.NoticeRee'
 }
 
-task destroyConfig(type: Delete){
+task eraseConfig(type: Delete){
     group = 'build'
     description = 'Destroys old configuration files'
     doFirst{
-        path = "C:\\Users\\Felix\\AppData\\Roaming\\NoticeRee\\config"
-        delete path
-        println "destroyed $path"
+        configFiles = "C:\\Users\\Felix\\AppData\\Roaming\\NoticeRee"
+        delete configFiles
+        println "destroyed $configFiles"
     }
 }
 
