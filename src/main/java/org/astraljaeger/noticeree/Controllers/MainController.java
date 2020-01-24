@@ -22,10 +22,10 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Line;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.SourceDataLine;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public class MainController {
 
@@ -83,6 +83,8 @@ public class MainController {
     DataStore store;
     TwitchClient client;
 
+    DataStore dataStore;
+
     Mixer.Info device;
 
     private final String CLIENT_ID = "i76h7g9dys23tnsp4q5qbc9vezpwfb";
@@ -94,9 +96,14 @@ public class MainController {
     @FXML
     public void initialize(){
 
+        logger.fine("Starting login process");
         client = doLogin();
-        playTestSound(null);
+
+        logger.fine("Setting up UI, restoring old config");
         setUiFromConfig();
+
+        logger.fine("Inizialising database manager");
+        dataStore = DataStore.getInstance();
 
         if(primaryStage != null){
             primaryStage.onCloseRequestProperty().addListener(((observable, oldValue, newValue) -> {
@@ -104,8 +111,6 @@ public class MainController {
                 Platform.exit();
             }));
         }
-
-
 
         mainTp.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
             logger.info(String.format("Changed tab from '%d' to '%d'",
@@ -184,22 +189,6 @@ public class MainController {
                 .build();
     }
 
-    private List<Mixer.Info> getPlaybackDevices(){
-        logger.info("Gathering audio playback devices");
-        Line.Info playbackLine = new Line.Info(SourceDataLine.class);
-        List<Mixer.Info> results = new ArrayList<Mixer.Info>();
-        List<Mixer.Info> infos = Lists.newArrayList(AudioSystem.getMixerInfo());
-
-        for(Mixer.Info info: infos){
-            Mixer mixer = AudioSystem.getMixer(info);
-            if(mixer.isLineSupported(playbackLine)) {
-                logger.fine(String.format("Device: %s", info.getName()));
-                results.add(info);
-            }
-        }
-        return results;
-    }
-
     public void setUiFromConfig(){
         ConfigStore store = ConfigStore.getInstance();
 
@@ -222,35 +211,60 @@ public class MainController {
         }));
 
         // Get list of audio devices and set configured device
-        List<Mixer.Info> devices = getPlaybackDevices();
-        audioOutputCb.setItems(FXCollections.observableArrayList(devices));
-        audioOutputCb.getSelectionModel().selectedItemProperty().addListener(((observable, oldValue, newValue) -> {
-            device = (Mixer.Info)newValue;
-            logger.info("Setting new playback device");
-            store.setDefaultOutputDevice(device);
-        }));
+        List<Mixer> devices = getPlaybackDevices();
+        if(devices.size() != 0) {
+            audioOutputCb.setItems(FXCollections.observableArrayList(devices));
+            audioOutputCb.getSelectionModel().selectedItemProperty().addListener(((observable, oldValue, newValue) -> {
+                device = ((Mixer) newValue).getMixerInfo();
+                logger.info("Setting new playback device");
+                store.setDefaultOutputDevice(device);
+            }));
 
-        // Restore playback device config
-        Mixer.Info configuredMixer = store.getDefaultOutputDevice();
-        int index = containsInfo(devices, configuredMixer);
-        if(configuredMixer != null && index != -1){
-            logger.info(String.format("Found stored playback device: [%d] %s", index, configuredMixer));
-            audioOutputCb.getSelectionModel().select(index);
+            // Restore playback device config
+            Mixer.Info configuredMixer = store.getDefaultOutputDevice();
+            if(configuredMixer != null) {
+                int index = findMixerInfo(devices, configuredMixer);
+                if (index != -1) {
+                    logger.info(String.format("Found stored playback device: [%d] %s", index, configuredMixer));
+                    audioOutputCb.getSelectionModel().select(index);
+                }
+            }else {
+                logger.info("No playback device set, defaulting to 1st found device: " + ((Mixer)audioOutputCb.getItems().get(0)).getMixerInfo().getName());
+                audioOutputCb.getSelectionModel().select(0);
+            }
+        }else {
+            // TODO: flag error that no output devices were found
         }
+    }
+
+
+    private List<Mixer> getPlaybackDevices(){
+        logger.info("Gathering audio playback devices");
+        Line.Info playbackLine = new Line.Info(SourceDataLine.class);
+        List<Mixer> results;
+        List<Mixer.Info> infos = Lists.newArrayList(AudioSystem.getMixerInfo());
+        results = infos.stream()
+                .map(AudioSystem::getMixer)
+                .filter(mixer -> mixer.isLineSupported(playbackLine))
+                .collect(Collectors.toList());
+        String devices = results.stream()
+                .map(Mixer::getMixerInfo)
+                .map(info -> "\t - " + info.getName() + " <> " + info.getDescription())
+                .collect(Collectors.joining("\n"));
+        logger.info("Found devices [" + results.size() + "]: \n" + devices);
+        return results;
     }
 
     private void playTestSound(Mixer.Info mixerInfo){
 
-        
+        // TODO: play sound on selected mixer
     }
 
-    private int containsInfo(List<Mixer.Info> infos, Mixer.Info target){
+    private int findMixerInfo(List<Mixer> infos, Mixer.Info target){
         int i = 0;
-        for(Mixer.Info info:infos){
-            if(info.getName().equals(target.getName()) &&
-            info.getDescription().equals(target.getDescription()) &&
-            info.getVendor().equals(target.getVendor()) &&
-            info.getVersion().equals(target.getVersion())){
+        for(Mixer mixer:infos){
+            Mixer.Info info = mixer.getMixerInfo();
+            if(info.getName().equals(target.getName()) && info.getDescription().equals(target.getDescription())){
                 return i;
             }
             i++;
