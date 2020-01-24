@@ -15,6 +15,8 @@ import javafx.scene.control.*;
 import javafx.stage.Stage;
 import javafx.util.Pair;
 import org.astraljaeger.noticeree.DataTools.ConfigStore;
+import org.astraljaeger.noticeree.DataTools.Data.Chatter;
+import org.astraljaeger.noticeree.DataTools.Data.MixerHelper;
 import org.astraljaeger.noticeree.DataTools.DataStore;
 import org.astraljaeger.noticeree.Utils;
 
@@ -35,34 +37,19 @@ public class MainController {
     public TabPane mainTp;
 
     @FXML
-    public TableView welcomeMsgTv;
+    public TableView<Chatter> chattersTv;
 
     @FXML
-    public TableView noticeMeTv;
+    public Button addBtn;
 
     @FXML
-    public TableView chattersTv;
+    public Button removeBtn;
 
     @FXML
-    public Button addWelcomeMsgBtn;
+    public Button playBtn;
 
     @FXML
-    public Button removeWelcomeMsgBtn;
-
-    @FXML
-    public Button addNoticeMeBtn;
-
-    @FXML
-    public Button removeNoticeMeBtn;
-
-    @FXML
-    public Button playNoticeMeBtn;
-
-    @FXML
-    public Button stopNoticeMeBtn;
-
-    @FXML
-    public Button applyFilterNoticeMeBtn;
+    public Button stopBtn;
 
     @FXML
     public Button testAudioBtn;
@@ -74,7 +61,7 @@ public class MainController {
     public Hyperlink channelLink;
 
     @FXML
-    public ChoiceBox<Object> audioOutputCb;
+    public ChoiceBox<MixerHelper> audioOutputCb;
 
     @FXML
     public TextField channelTf;
@@ -85,7 +72,7 @@ public class MainController {
 
     DataStore dataStore;
 
-    Mixer.Info device;
+    MixerHelper device;
 
     private final String CLIENT_ID = "i76h7g9dys23tnsp4q5qbc9vezpwfb";
 
@@ -120,10 +107,6 @@ public class MainController {
                     mainTp.getTabs().indexOf(oldValue),
                     mainTp.getTabs().indexOf(newValue)));
             // TODO: surely there is something to do here
-        });
-
-        audioOutputCb.getSelectionModel().selectedItemProperty().addListener((observable) -> {
-            // TODO: play the test sound every time the output device is changed on that device
         });
     }
 
@@ -216,26 +199,41 @@ public class MainController {
         // Get list of audio devices and set configured device
         List<Mixer> devices = getPlaybackDevices();
         if(devices.size() != 0) {
-            audioOutputCb.setItems(FXCollections.observableArrayList(devices));
+
+            // Collect devices
+            audioOutputCb.setItems(FXCollections.observableArrayList(
+                    devices.stream()
+                            .map(mixer -> new MixerHelper(
+                                    mixer.getMixerInfo().getName(),
+                                    mixer.getMixerInfo().getDescription(),
+                                    mixer))
+                            .collect(Collectors.toList()))
+            );
+
+            // Device changed event
             audioOutputCb.getSelectionModel().selectedItemProperty().addListener(((observable, oldValue, newValue) -> {
-                device = ((Mixer) newValue).getMixerInfo();
+                device = newValue;
                 logger.info("Setting new playback device");
-                store.setDefaultOutputDevice(device);
+                playTestSound(device);
+                store.setDefaultOutputDevice(device.getMixer().getMixerInfo());
             }));
 
             // Restore playback device config
             Mixer.Info configuredMixer = store.getDefaultOutputDevice();
             if(configuredMixer != null) {
-                int index = findMixerInfo(devices, configuredMixer);
+                int index = findMixerInfo(audioOutputCb.getItems(), configuredMixer);
                 if (index != -1) {
                     logger.info(String.format("Found stored playback device: [%d] %s", index, configuredMixer));
                     audioOutputCb.getSelectionModel().select(index);
                 }
-            }else {
+            }
+            else {
+                // TODO: Consider giving a window to tell the user to configure a playback device
                 logger.info("No playback device set, defaulting to 1st found device: " + ((Mixer)audioOutputCb.getItems().get(0)).getMixerInfo().getName());
                 audioOutputCb.getSelectionModel().select(0);
             }
-        }else {
+        }
+        else {
             // TODO: flag error that no output devices were found
         }
     }
@@ -258,15 +256,15 @@ public class MainController {
         return results;
     }
 
-    private void playTestSound(Mixer.Info mixerInfo){
+    private void playTestSound(MixerHelper mixerInfo){
 
         // TODO: play sound on selected mixer
     }
 
-    private int findMixerInfo(List<Mixer> infos, Mixer.Info target){
+    private int findMixerInfo(List<MixerHelper> helpers, Mixer.Info target){
         int i = 0;
-        for(Mixer mixer:infos){
-            Mixer.Info info = mixer.getMixerInfo();
+        for(MixerHelper helper: helpers){
+            Mixer.Info info = helper.getMixer().getMixerInfo();
             if(info.getName().equals(target.getName()) && info.getDescription().equals(target.getDescription())){
                 return i;
             }
