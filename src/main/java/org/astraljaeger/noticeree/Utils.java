@@ -4,25 +4,24 @@
 
 package org.astraljaeger.noticeree;
 
-import java.awt.*;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.net.URI;
-
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
-import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
+import javafx.scene.control.Alert.AlertType;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
+import javafx.scene.paint.Color;
 import javafx.util.Pair;
 
-import javax.swing.*;
+import java.awt.*;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.net.URI;
 
 public class Utils {
 
@@ -60,7 +59,9 @@ public class Utils {
         link.setAlignment(Pos.CENTER);
 
         if(!errorMessage.equals("")){
-            grid.add(new Label(errorMessage), 0, 3, 2, 1);
+            Label errLabel = new Label(errorMessage);
+            errLabel.setTextFill(Color.RED);
+            grid.add(errLabel, 0, 3, 2, 1);
         }
 
         Node loginBtn = dialog.getDialogPane().lookupButton(confirmationBtn);
