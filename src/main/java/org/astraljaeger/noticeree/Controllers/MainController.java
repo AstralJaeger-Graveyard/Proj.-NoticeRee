@@ -108,6 +108,9 @@ public class MainController {
         if(primaryStage != null){
             primaryStage.onCloseRequestProperty().addListener(((observable, oldValue, newValue) -> {
                 // TODO: Close db and things
+                logger.info("Terminating application");
+                client.getChat().disconnect();
+                store.close();
                 Platform.exit();
             }));
         }
