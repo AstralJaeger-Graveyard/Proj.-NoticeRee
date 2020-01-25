@@ -103,13 +103,6 @@ public class MainController {
 
     private static final String CLIENT_ID = "i76h7g9dys23tnsp4q5qbc9vezpwfb";
 
-    public MainController(){
-        // TODO: Remove
-        var chatter = new Chatter("TestChatter0", "Whoop Whoop");
-        var instance = DataStore.getInstance();
-        instance.addChatter(chatter);
-    }
-
     @FXML
     public void initialize(){
         logger.setLevel(Level.ALL);
@@ -128,7 +121,7 @@ public class MainController {
         logger.fine("Setup program exit event");
         if(primaryStage != null){
             primaryStage.onCloseRequestProperty().addListener(((observable, oldValue, newValue) -> {
-                // TODO: Close db and things
+                // TODO: Close db and FIND THE FUCK OUT WHY THIS DOES NOT TERMINATE!
                 logger.info("Terminating application");
                 client.getChat().disconnect();
                 store.close();
@@ -189,7 +182,7 @@ public class MainController {
             Optional<OAuth2Credential> storeOptional = twitchIdentityProvider.getAdditionalCredentialInformation(credential);
             if(storeOptional.isPresent()){
                 result = storeOptional.get();
-            }else {
+            } else {
                 errorMessage = "Stored token is invalid, please re-enter";
             }
         }
@@ -210,6 +203,7 @@ public class MainController {
             Optional<OAuth2Credential> loginOptional = twitchIdentityProvider.getAdditionalCredentialInformation(credential);
             if(loginOptional.isPresent()){
                 result = loginOptional.get();
+                dialog.close();
                 if(save){
                     configStore.setToken(token);
                 }
