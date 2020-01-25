@@ -13,6 +13,8 @@ public class Configuration {
     public static String DATA_LOCATION = "data";
     public static String LOG_LOCATION = "logs";
 
+    public static boolean USE_PERSISTANCE = false;
+
     private static String workingDirectory = "";
 
     public static String getAppWorkingDirectory(){

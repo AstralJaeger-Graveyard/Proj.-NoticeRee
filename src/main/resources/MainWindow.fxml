@@ -18,7 +18,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.astraljaeger.noticeree.controllers.MainController">
+<AnchorPane prefHeight="500.0" prefWidth="800.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.astraljaeger.noticeree.controllers.MainController">
    <children>
       <TabPane fx:id="mainTp" layoutX="155.0" layoutY="37.0" prefHeight="200.0" prefWidth="200.0" tabClosingPolicy="UNAVAILABLE" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
         <tabs>
@@ -31,7 +31,9 @@
                      <children>
                         <TableView fx:id="chattersTv" prefHeight="200.0" prefWidth="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="45.0" AnchorPane.topAnchor="0.0">
                           <columns>
-                            <TableColumn fx:id="chattersNameCol" prefWidth="150.0" text="Chatter" />
+                              <TableColumn fx:id="chattersIDCol" maxWidth="50.0" prefWidth="35.0" text="ID" />
+                            <TableColumn fx:id="chattersUsernameCol" prefWidth="150.0" text="Username" />
+                              <TableColumn fx:id="chattersLastUsedCol" prefWidth="75.0" text="Last Used" />
                               <TableColumn fx:id="chattersMessageCol" prefWidth="150.0" text="Message" />
                               <TableColumn fx:id="chattersSoundsCol" prefWidth="250.0" text="Sounds" />
                           </columns>
@@ -51,7 +53,7 @@
                                     <Font size="14.0" />
                                  </font>
                               </Button>
-                              <Button fx:id="editBtn" mnemonicParsing="false" prefHeight="35.0" prefWidth="35.0" text="-">
+                              <Button fx:id="editBtn" mnemonicParsing="false" prefHeight="35.0" prefWidth="35.0" text="✎">
                                  <font>
                                     <Font size="14.0" />
                                  </font>

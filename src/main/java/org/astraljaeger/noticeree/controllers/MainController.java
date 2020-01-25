@@ -10,24 +10,22 @@ import com.github.twitch4j.auth.providers.TwitchIdentityProvider;
 import com.google.common.collect.Lists;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.stage.Stage;
 import javafx.util.Pair;
-import org.astraljaeger.noticeree.DataTools.ConfigStore;
-import org.astraljaeger.noticeree.DataTools.Data.Chatter;
-import org.astraljaeger.noticeree.DataTools.Data.MixerHelper;
-import org.astraljaeger.noticeree.DataTools.DataStore;
 import org.astraljaeger.noticeree.Utils;
+import org.astraljaeger.noticeree.datatools.ConfigStore;
+import org.astraljaeger.noticeree.datatools.DataStore;
+import org.astraljaeger.noticeree.datatools.data.Chatter;
+import org.astraljaeger.noticeree.datatools.data.MixerHelper;
 
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Line;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.SourceDataLine;
 import java.net.URI;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
@@ -39,6 +37,8 @@ public class MainController {
 
     private final Logger logger = Logger.getLogger(MainController.class.getSimpleName());
 
+    // region FXML Fields
+
     @FXML
     public TabPane mainTp;
 
@@ -46,13 +46,19 @@ public class MainController {
     public TableView<Chatter> chattersTv;
 
     @FXML
-    public TableColumn<String, Chatter> chattersNameCol;
+    public TableColumn<Integer, Chatter> chattersIDCol;
+
+    @FXML
+    public TableColumn<String, Chatter> chattersUsernameCol;
 
     @FXML
     public TableColumn<String, Chatter> chattersMessageCol;
 
     @FXML
     public TableColumn<String, Chatter> chattersSoundsCol;
+
+    @FXML
+    public TableColumn<String, Chatter> chattersLastUsedCol;
 
     @FXML
     public Button addBtn;
@@ -84,6 +90,8 @@ public class MainController {
     @FXML
     public TextField channelTf;
 
+    // endregion
+
     Stage primaryStage;
     DataStore store;
     TwitchClient client;
@@ -92,21 +100,17 @@ public class MainController {
 
     MixerHelper device;
 
-    ObservableList<Chatter> chatterList;
-
     private static final String CLIENT_ID = "i76h7g9dys23tnsp4q5qbc9vezpwfb";
 
     public MainController(){
-        chatterList = FXCollections.observableArrayList();
-        Chatter chatter = new Chatter(0, "Test Chatter");
-        chatter.setWelcomeMessage("The master has arrived");
-        chatter.setSounds(Arrays.asList("Sound_0.mp3", "Sound_1.mp3", "Sound_2.mp3"));
-        chatterList.add(chatter);
+        // TODO: Remove
+        var chatter = new Chatter(0, "TestChatter0", "Whoop Whoop");
+        var instance = DataStore.getInstance();
+        instance.addChatter(chatter);
     }
 
     @FXML
     public void initialize(){
-
         logger.fine("Starting login process");
         client = doLogin();
 
@@ -140,16 +144,24 @@ public class MainController {
         logger.fine("Setup add sound event");
         addBtn.setOnAction(event -> {
             // TODO: implement add option
+            var instance = DataStore.getInstance();
+            var chatter = instance.addChatter();
         });
 
         logger.fine("Setup edit sound event");
         editBtn.setOnAction(event -> {
             // TODO: implement edit option
+
         });
 
         logger.fine("Setup remove sound event");
         removeBtn.setOnAction(event -> {
             // TODO: implement remove option
+            var instance = DataStore.getInstance();
+            var item = chattersTv.getSelectionModel().getSelectedItem();
+            if(item == null)
+                return;
+            instance.removeChatter(item);
         });
 
     }
@@ -300,16 +312,18 @@ public class MainController {
     private void setupTableView(){
         logger.info("Setting up data bindings");
         chattersTv.setPlaceholder(new Label("Much empty! Such wow!"));
-        chattersTv.setItems(chatterList);
-        chattersNameCol.setCellValueFactory(new PropertyValueFactory<>("username"));
+        chattersTv.setItems(DataStore.getInstance().getChattersList());
+        chattersIDCol.setCellValueFactory(new PropertyValueFactory<>("id"));
+        chattersUsernameCol.setCellValueFactory(new PropertyValueFactory<>("username"));
         chattersMessageCol.setCellValueFactory(new PropertyValueFactory<>("welcomeMessage"));
         chattersSoundsCol.setCellValueFactory(new PropertyValueFactory<>("sounds"));
+        chattersLastUsedCol.setCellValueFactory(new PropertyValueFactory<>("lastUsed"));
 
-        // Set better renderer for sounds
+        // Set better renderer for username, lastUsed and sounds
     }
 
     private void playTestSound(MixerHelper mixerInfo){
-
+        logger.fine("Playing test sound on " + mixerInfo);
         // TODO: play sound on selected mixer
     }
 

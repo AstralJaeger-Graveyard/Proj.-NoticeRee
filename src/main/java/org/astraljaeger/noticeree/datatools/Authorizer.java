@@ -2,7 +2,7 @@
  * Copyright(c) AstralJaeger 2020.
  */
 
-package org.astraljaeger.noticeree.DataTools;
+package org.astraljaeger.noticeree.datatools;
 
 public class Authorizer {
 

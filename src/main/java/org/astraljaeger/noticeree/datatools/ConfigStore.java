@@ -2,7 +2,7 @@
  * Copyright(c) AstralJaeger 2020.
  */
 
-package org.astraljaeger.noticeree.DataTools;
+package org.astraljaeger.noticeree.datatools;
 
 import com.google.gson.Gson;
 import org.astraljaeger.noticeree.Configuration;

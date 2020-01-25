@@ -1,4 +1,4 @@
-package org.astraljaeger.noticeree.DataTools;
+package org.astraljaeger.noticeree.datatools;
 
 public class CryptoException extends Exception {
 
