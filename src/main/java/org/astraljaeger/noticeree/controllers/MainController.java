@@ -28,6 +28,7 @@ import javax.sound.sampled.SourceDataLine;
 import java.net.URI;
 import java.util.List;
 import java.util.Optional;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -104,13 +105,14 @@ public class MainController {
 
     public MainController(){
         // TODO: Remove
-        var chatter = new Chatter(0, "TestChatter0", "Whoop Whoop");
+        var chatter = new Chatter("TestChatter0", "Whoop Whoop");
         var instance = DataStore.getInstance();
         instance.addChatter(chatter);
     }
 
     @FXML
     public void initialize(){
+        logger.setLevel(Level.ALL);
         logger.fine("Starting login process");
         client = doLogin();
 
@@ -145,7 +147,7 @@ public class MainController {
         addBtn.setOnAction(event -> {
             // TODO: implement add option
             var instance = DataStore.getInstance();
-            var chatter = instance.addChatter();
+            instance.addChatter(new Chatter("username"));
         });
 
         logger.fine("Setup edit sound event");
@@ -313,7 +315,7 @@ public class MainController {
         logger.info("Setting up data bindings");
         chattersTv.setPlaceholder(new Label("Much empty! Such wow!"));
         chattersTv.setItems(DataStore.getInstance().getChattersList());
-        chattersIDCol.setCellValueFactory(new PropertyValueFactory<>("id"));
+        // chattersIDCol.setCellValueFactory(new PropertyValueFactory<>("id"));
         chattersUsernameCol.setCellValueFactory(new PropertyValueFactory<>("username"));
         chattersMessageCol.setCellValueFactory(new PropertyValueFactory<>("welcomeMessage"));
         chattersSoundsCol.setCellValueFactory(new PropertyValueFactory<>("sounds"));

@@ -6,9 +6,6 @@ import javafx.collections.ObservableList;
 import java.util.List;
 
 public class Chatter {
-
-    private final IntegerProperty id;
-
     private final StringProperty username;
 
     private final StringProperty welcomeMessage;
@@ -17,42 +14,31 @@ public class Chatter {
 
     private final LongProperty lastUsed;
 
-    public Chatter(int id){
-        this.id = new SimpleIntegerProperty(id);
+    public Chatter(){
         this.username = new SimpleStringProperty();
         this.welcomeMessage = new SimpleStringProperty();
         this.sounds = new SimpleListProperty<>();
         this.lastUsed = new SimpleLongProperty();
     }
 
-    public Chatter(int id, String username){
-        this(id);
+    public Chatter(String username){
+        this();
         this.username.setValue(username);
     }
 
-    public Chatter(int id, String username, String welcomeMessage){
-        this(id, username);
+    public Chatter(String username, String welcomeMessage){
+        this(username);
         this.welcomeMessage.setValue(welcomeMessage);
     }
 
-    public Chatter(int id, String username, String welcomeMessage, List<String> sounds){
-        this(id, username, welcomeMessage);
+    public Chatter(String username, String welcomeMessage, List<String> sounds){
+        this(username, welcomeMessage);
         this.sounds.addAll(sounds);
     }
 
-    public Chatter(int id, String username, String welcomeMessage, List<String> sounds, long lastUsed){
-        this(id, username, welcomeMessage, sounds);
+    public Chatter(String username, String welcomeMessage, List<String> sounds, long lastUsed){
+        this(username, welcomeMessage, sounds);
         this.lastUsed.setValue(lastUsed);
-    }
-
-    public int getId() {
-
-        return id.get();
-    }
-
-    public IntegerProperty idProperty() {
-
-        return id;
     }
 
     public String getUsername() {
@@ -96,6 +82,6 @@ public class Chatter {
     }
 
     public String toString(){
-        return id + ": " + username;
+        return username.get();
     }
 }
