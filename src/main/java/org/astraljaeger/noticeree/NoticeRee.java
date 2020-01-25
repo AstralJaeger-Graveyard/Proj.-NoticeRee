@@ -9,7 +9,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import org.astraljaeger.noticeree.Controllers.MainController;
+import org.astraljaeger.noticeree.controllers.MainController;
 
 import java.util.Arrays;
 

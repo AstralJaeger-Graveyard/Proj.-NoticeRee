@@ -18,7 +18,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.astraljaeger.noticeree.Controllers.MainController">
+<AnchorPane prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.astraljaeger.noticeree.controllers.MainController">
    <children>
       <TabPane fx:id="mainTp" layoutX="155.0" layoutY="37.0" prefHeight="200.0" prefWidth="200.0" tabClosingPolicy="UNAVAILABLE" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
         <tabs>
@@ -32,7 +32,7 @@
                         <TableView fx:id="chattersTv" prefHeight="200.0" prefWidth="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="45.0" AnchorPane.topAnchor="0.0">
                           <columns>
                             <TableColumn fx:id="chattersNameCol" prefWidth="150.0" text="Chatter" />
-                              <TableColumn fx:id="chatterMessageCol" prefWidth="150.0" text="Message" />
+                              <TableColumn fx:id="chattersMessageCol" prefWidth="150.0" text="Message" />
                               <TableColumn fx:id="chattersSoundsCol" prefWidth="250.0" text="Sounds" />
                           </columns>
                         </TableView>

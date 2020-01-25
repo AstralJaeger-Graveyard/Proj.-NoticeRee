@@ -1,7 +1,6 @@
-package org.astraljaeger.noticeree.Controllers;
+package org.astraljaeger.noticeree.controllers;
 
-import com.github.philippheuer.credentialmanager.CredentialManager;
-import com.github.philippheuer.credentialmanager.CredentialManagerBuilder;
+import com.github.philippheuer.credentialmanager.*;
 import com.github.philippheuer.credentialmanager.domain.OAuth2Credential;
 import com.github.philippheuer.credentialmanager.storage.TemporaryStorageBackend;
 import com.github.twitch4j.TwitchClient;
@@ -12,7 +11,11 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.scene.*;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 import javafx.util.Pair;
 import org.astraljaeger.noticeree.DataTools.ConfigStore;
@@ -25,10 +28,14 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Line;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.SourceDataLine;
+import java.io.File;
+import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+
+import static java.awt.Desktop.*;
 
 public class MainController {
 
@@ -104,9 +111,9 @@ public class MainController {
 
         logger.fine("Inizialising database manager");
         // dataStore = DataStore.getInstance();
-        dataStore = null;
+        // dataStore = null;
         logger.fine("Binding data");
-
+        setupTableView();
         chattersTv.setItems(chatterList);
 
 
@@ -132,7 +139,6 @@ public class MainController {
     }
 
     private TwitchClient doLogin() {
-
         CredentialManager credentialManager = CredentialManagerBuilder.builder()
                 .withStorageBackend(new TemporaryStorageBackend())
                 .build();
@@ -183,9 +189,7 @@ public class MainController {
         }
 
        logger.info("Welcome " + result.getUserName());
-
         configStore.setUsername(result.getUserName());
-
 
         return TwitchClientBuilder.builder()
                 .withCredentialManager(credentialManager)
@@ -277,6 +281,26 @@ public class MainController {
         return results;
     }
 
+    private void setupTableView(){
+        logger.info("Setting up data bindings");
+        chattersTv.setPlaceholder(createPlaceholder());
+
+    }
+
+    private Node createPlaceholder(){
+        GridPane pane = new GridPane();
+        File meme = new File("https://i.kym-cdn.com/entries/icons/original/000/013/564/doge.jpg");
+        Image image = new Image(meme.toURI().toString());
+        ImageView view = new ImageView();
+        view.setImage(image);
+        pane.add(view, 0, 0);
+        Label label = new Label("Much empty, such wow!");
+        pane.add(label, 0, 1);
+        pane.setHgap(10);
+        pane.setVgap(10);
+        return pane;
+    }
+
     private void playTestSound(MixerHelper mixerInfo){
 
         // TODO: play sound on selected mixer
@@ -299,13 +323,13 @@ public class MainController {
     }
 
     private void openUriInBrowser(String uri){
-//        if (Desktop.isDesktopSupported()) {
-//            Desktop desktop = Desktop.getDesktop();
-//            if(desktop.isSupported(Desktop.Action.BROWSE)){
-//                try {
-//                    desktop.browse(new URI(uri));
-//                }catch (Exception ignored){}
-//            }
-//        }
+        if (isDesktopSupported()) {
+            var desktop = getDesktop();
+            if(desktop.isSupported(Action.BROWSE)){
+                try {
+                    desktop.browse(new URI(uri));
+                }catch (Exception ignored){}
+            }
+        }
     }
 }
