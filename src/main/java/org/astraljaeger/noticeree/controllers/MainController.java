@@ -1,6 +1,7 @@
 package org.astraljaeger.noticeree.controllers;
 
-import com.github.philippheuer.credentialmanager.*;
+import com.github.philippheuer.credentialmanager.CredentialManager;
+import com.github.philippheuer.credentialmanager.CredentialManagerBuilder;
 import com.github.philippheuer.credentialmanager.domain.OAuth2Credential;
 import com.github.philippheuer.credentialmanager.storage.TemporaryStorageBackend;
 import com.github.twitch4j.TwitchClient;
@@ -11,11 +12,8 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
-import javafx.scene.*;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
-import javafx.scene.layout.GridPane;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.stage.Stage;
 import javafx.util.Pair;
 import org.astraljaeger.noticeree.DataTools.ConfigStore;
@@ -28,8 +26,8 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Line;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.SourceDataLine;
-import java.io.File;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
@@ -61,6 +59,9 @@ public class MainController {
 
     @FXML
     public Button removeBtn;
+
+    @FXML
+    public Button editBtn;
 
     @FXML
     public Button playBtn;
@@ -96,8 +97,11 @@ public class MainController {
     private static final String CLIENT_ID = "i76h7g9dys23tnsp4q5qbc9vezpwfb";
 
     public MainController(){
-        chatterList = FXCollections.emptyObservableList();
-        chatterList.add(new Chatter(0, "Test Chatter"));
+        chatterList = FXCollections.observableArrayList();
+        Chatter chatter = new Chatter(0, "Test Chatter");
+        chatter.setWelcomeMessage("The master has arrived");
+        chatter.setSounds(Arrays.asList("Sound_0.mp3", "Sound_1.mp3", "Sound_2.mp3"));
+        chatterList.add(chatter);
     }
 
     @FXML
@@ -110,16 +114,12 @@ public class MainController {
         setUiFromConfig();
 
         logger.fine("Inizialising database manager");
-        // dataStore = DataStore.getInstance();
-        // dataStore = null;
+        dataStore = DataStore.getInstance();
+
         logger.fine("Binding data");
         setupTableView();
-        chattersTv.setItems(chatterList);
 
-
-
-
-
+        logger.fine("Setup program exit event");
         if(primaryStage != null){
             primaryStage.onCloseRequestProperty().addListener(((observable, oldValue, newValue) -> {
                 // TODO: Close db and things
@@ -130,12 +130,28 @@ public class MainController {
             }));
         }
 
-        mainTp.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+        logger.fine("Setup tab change event");
+        mainTp.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
             logger.info(String.format("Changed tab from '%d' to '%d'",
                     mainTp.getTabs().indexOf(oldValue),
-                    mainTp.getTabs().indexOf(newValue)));
-            // TODO: surely there is something to do here
+                    mainTp.getTabs().indexOf(newValue)))
+        );
+
+        logger.fine("Setup add sound event");
+        addBtn.setOnAction(event -> {
+            // TODO: implement add option
         });
+
+        logger.fine("Setup edit sound event");
+        editBtn.setOnAction(event -> {
+            // TODO: implement edit option
+        });
+
+        logger.fine("Setup remove sound event");
+        removeBtn.setOnAction(event -> {
+            // TODO: implement remove option
+        });
+
     }
 
     private TwitchClient doLogin() {
@@ -283,24 +299,15 @@ public class MainController {
 
     private void setupTableView(){
         logger.info("Setting up data bindings");
-        chattersTv.setPlaceholder(createPlaceholder());
+        chattersTv.setPlaceholder(new Label("Much empty! Such wow!"));
+        chattersTv.setItems(chatterList);
+        chattersNameCol.setCellValueFactory(new PropertyValueFactory<>("username"));
+        chattersMessageCol.setCellValueFactory(new PropertyValueFactory<>("welcomeMessage"));
+        chattersSoundsCol.setCellValueFactory(new PropertyValueFactory<>("sounds"));
 
+        // Set better renderer for sounds
     }
-
-    private Node createPlaceholder(){
-        GridPane pane = new GridPane();
-        File meme = new File("https://i.kym-cdn.com/entries/icons/original/000/013/564/doge.jpg");
-        Image image = new Image(meme.toURI().toString());
-        ImageView view = new ImageView();
-        view.setImage(image);
-        pane.add(view, 0, 0);
-        Label label = new Label("Much empty, such wow!");
-        pane.add(label, 0, 1);
-        pane.setHgap(10);
-        pane.setVgap(10);
-        return pane;
-    }
-
+    
     private void playTestSound(MixerHelper mixerInfo){
 
         // TODO: play sound on selected mixer
