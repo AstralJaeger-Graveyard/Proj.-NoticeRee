@@ -4,7 +4,10 @@
 
 package org.astraljaeger.noticeree.DataTools;
 
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import org.astraljaeger.noticeree.Configuration;
+import org.astraljaeger.noticeree.DataTools.Data.Chatter;
 import org.dizitart.no2.Nitrite;
 import org.dizitart.no2.objects.Cursor;
 import org.dizitart.no2.objects.ObjectRepository;
@@ -12,8 +15,6 @@ import org.dizitart.no2.objects.ObjectRepository;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.logging.Logger;
 
 public class DataStore {
@@ -30,7 +31,7 @@ public class DataStore {
 
     private Nitrite db;
     private ObjectRepository<Chatter> chatterRepository;
-    private List<Chatter> chatters;
+    public ObservableList<Chatter> chattersList;
 
     private DataStore(){
 
@@ -46,17 +47,41 @@ public class DataStore {
                 .filePath(Configuration.getAppDataDirectory() + FILE_NAME)
                 .openOrCreate();
         chatterRepository = db.getRepository(Chatter.class);
+        chatterRepository.register(info -> {
+            switch (info.getChangeType()){
+                case INSERT:
+                    logger.info("Inserting " + info.getChangedItems().size() + " Element");
+                    break;
+                case UPDATE:
+                    logger.info("Updating " + info.getChangedItems().size() + " Element");
+                    break;
+                case REMOVE:
+                    logger.info("Removing " + info.getChangedItems().size() + " Element");
+                    break;
+                default:
+                    break;
+            }
+        });
 
 
-        chatters = new ArrayList<>(102);
+        chattersList = FXCollections.observableArrayList();
         Cursor<Chatter> cursor = chatterRepository.find();
         for(Chatter chatter : cursor){
-            chatters.add(chatter);
+            chattersList.add(chatter);
         }
     }
 
     public void addChatter(Chatter chatter){
-        
+        chatterRepository.insert(chatter);
+        chattersList.add(chatter);
+    }
+
+    public void removeChatter(Chatter chatter){
+
+    }
+
+    public void updateChatter(){
+
     }
 
     public void close(){

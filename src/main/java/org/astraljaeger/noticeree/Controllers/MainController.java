@@ -10,6 +10,7 @@ import com.github.twitch4j.auth.providers.TwitchIdentityProvider;
 import com.google.common.collect.Lists;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.stage.Stage;
@@ -38,6 +39,15 @@ public class MainController {
 
     @FXML
     public TableView<Chatter> chattersTv;
+
+    @FXML
+    public TableColumn<String, Chatter> chattersNameCol;
+
+    @FXML
+    public TableColumn<String, Chatter> chattersMessageCol;
+
+    @FXML
+    public TableColumn<String, Chatter> chattersSoundsCol;
 
     @FXML
     public Button addBtn;
@@ -74,10 +84,13 @@ public class MainController {
 
     MixerHelper device;
 
-    private final String CLIENT_ID = "i76h7g9dys23tnsp4q5qbc9vezpwfb";
+    ObservableList<Chatter> chatterList;
+
+    private static final String CLIENT_ID = "i76h7g9dys23tnsp4q5qbc9vezpwfb";
 
     public MainController(){
-
+        chatterList = FXCollections.emptyObservableList();
+        chatterList.add(new Chatter(0, "Test Chatter"));
     }
 
     @FXML
@@ -90,7 +103,15 @@ public class MainController {
         setUiFromConfig();
 
         logger.fine("Inizialising database manager");
-        dataStore = DataStore.getInstance();
+        // dataStore = DataStore.getInstance();
+        dataStore = null;
+        logger.fine("Binding data");
+
+        chattersTv.setItems(chatterList);
+
+
+
+
 
         if(primaryStage != null){
             primaryStage.onCloseRequestProperty().addListener(((observable, oldValue, newValue) -> {
@@ -119,15 +140,15 @@ public class MainController {
         TwitchIdentityProvider twitchIdentityProvider = new TwitchIdentityProvider(CLIENT_ID, "", "");
         credentialManager.registerIdentityProvider(twitchIdentityProvider);
         String provider = twitchIdentityProvider.getProviderName();
-        ConfigStore store = ConfigStore.getInstance();
+        ConfigStore configStore = ConfigStore.getInstance();
 
         OAuth2Credential credential = null;
         OAuth2Credential result = null;
         String errorMessage = "";
 
-        if(!store.getToken().equals("")){
+        if(!configStore.getToken().equals("")){
             // get token from store
-            String token = store.getToken();
+            String token = configStore.getToken();
             credential = new OAuth2Credential(provider, token);
             Optional<OAuth2Credential> storeOptional = twitchIdentityProvider.getAdditionalCredentialInformation(credential);
             if(storeOptional.isPresent()){
@@ -154,7 +175,7 @@ public class MainController {
             if(loginOptional.isPresent()){
                 result = loginOptional.get();
                 if(save){
-                    store.setToken(token);
+                    configStore.setToken(token);
                 }
             }else {
                 errorMessage = "Please enter a valid token";
@@ -163,7 +184,7 @@ public class MainController {
 
        logger.info("Welcome " + result.getUserName());
 
-        store.setUsername(result.getUserName());
+        configStore.setUsername(result.getUserName());
 
 
         return TwitchClientBuilder.builder()
@@ -176,24 +197,24 @@ public class MainController {
     }
 
     public void setUiFromConfig(){
-        ConfigStore store = ConfigStore.getInstance();
+        ConfigStore configStore = ConfigStore.getInstance();
 
         // Set links in about
-        usernameLink.setText(store.getUsername());
+        usernameLink.setText(configStore.getUsername());
         usernameLink.setOnAction(event -> {
             openUriInBrowser("https://www.twitch.tv/" + usernameLink.getText());
         });
 
-        channelLink.setText(store.getChannel());
+        channelLink.setText(configStore.getChannel());
         channelLink.setOnAction(event -> {
             openUriInBrowser("https://www.twitch.tv/" + channelLink.getText());
         });
 
-        channelTf.setText(store.getChannel());
+        channelTf.setText(configStore.getChannel());
         channelTf.textProperty().addListener(((observable, oldValue, newValue) -> {
             logger.fine("Setting channel name to " + newValue);
             channelTf.setText(newValue);
-            store.setChannel(newValue);
+            configStore.setChannel(newValue);
         }));
 
         // Get list of audio devices and set configured device
@@ -215,11 +236,11 @@ public class MainController {
                 device = newValue;
                 logger.info("Setting new playback device");
                 playTestSound(device);
-                store.setDefaultOutputDevice(device.getMixer().getMixerInfo());
+                configStore.setDefaultOutputDevice(device.getMixer().getMixerInfo());
             }));
 
             // Restore playback device config
-            Mixer.Info configuredMixer = store.getDefaultOutputDevice();
+            Mixer.Info configuredMixer = configStore.getDefaultOutputDevice();
             if(configuredMixer != null) {
                 int index = findMixerInfo(audioOutputCb.getItems(), configuredMixer);
                 if (index != -1) {
@@ -235,9 +256,9 @@ public class MainController {
         }
         else {
             // TODO: flag error that no output devices were found
+            logger.info("No playback devices were found!");
         }
     }
-
 
     private List<Mixer> getPlaybackDevices(){
         logger.info("Gathering audio playback devices");

@@ -27,7 +27,7 @@ public class MixerHelper {
 
     @Override
     public String toString(){
-        return String.format("%s: %s", name, description);
+        return String.format("%s", name);
     }
 
     @Override
