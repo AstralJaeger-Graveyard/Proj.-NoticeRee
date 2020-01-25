@@ -9,19 +9,20 @@ import javafx.collections.ObservableList;
 import org.astraljaeger.noticeree.Configuration;
 import org.astraljaeger.noticeree.DataTools.Data.Chatter;
 import org.dizitart.no2.Nitrite;
-import org.dizitart.no2.objects.Cursor;
-import org.dizitart.no2.objects.ObjectRepository;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public class DataStore {
 
     private static final Logger logger = Logger.getLogger(DataStore.class.getSimpleName());
     private static DataStore instance;
     private static final String FILE_NAME = "data.db";
+
 
     public static DataStore getInstance(){
         if(instance == null)
@@ -30,7 +31,6 @@ public class DataStore {
     }
 
     private Nitrite db;
-    private ObjectRepository<Chatter> chatterRepository;
     public ObservableList<Chatter> chattersList;
 
     private DataStore(){
@@ -39,56 +39,41 @@ public class DataStore {
             try {
                 Files.createDirectory(Paths.get(Configuration.getAppDataDirectory()));
             }catch (IOException e){
-                e.printStackTrace();
+                logger.info("An error occurred while creating the data directory: " +
+                         Arrays.stream(e.getStackTrace())
+                                .map(trace -> String.format(" at %s#%s(%s:%d)",
+                                        trace.getClass().getName(),
+                                        trace.getMethodName(),
+                                        trace.getFileName(),
+                                        trace.getLineNumber()))
+                                .collect(Collectors.joining(",\n")));
             }
         }
 
         db = Nitrite.builder()
                 .filePath(Configuration.getAppDataDirectory() + FILE_NAME)
                 .openOrCreate();
-        chatterRepository = db.getRepository(Chatter.class);
-        chatterRepository.register(info -> {
-            switch (info.getChangeType()){
-                case INSERT:
-                    logger.info("Inserting " + info.getChangedItems().size() + " Element");
-                    break;
-                case UPDATE:
-                    logger.info("Updating " + info.getChangedItems().size() + " Element");
-                    break;
-                case REMOVE:
-                    logger.info("Removing " + info.getChangedItems().size() + " Element");
-                    break;
-                default:
-                    break;
-            }
-        });
-
 
         chattersList = FXCollections.observableArrayList();
-        Cursor<Chatter> cursor = chatterRepository.find();
-        for(Chatter chatter : cursor){
-            chattersList.add(chatter);
-        }
     }
 
-    public void addChatter(Chatter chatter){
-        chatterRepository.insert(chatter);
+    public synchronized ObservableList<Chatter> getChattersList(){
+        return this.chattersList;
+    }
+
+    public synchronized void addChatter(Chatter chatter){
         chattersList.add(chatter);
     }
 
-    public void removeChatter(Chatter chatter){
-
+    public synchronized void removeChatter(Chatter chatter){
+        chattersList.remove(chatter);
     }
 
-    public void updateChatter(){
-
+    public synchronized void updateChatter(Chatter updated){
+        // TODO: update
     }
 
     public void close(){
-        if(db != null && !db.isClosed()){
-            db.close();
-        }
+        // TODO: Close db
     }
-
-
 }
