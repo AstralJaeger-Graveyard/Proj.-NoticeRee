@@ -11,6 +11,7 @@ public class Configuration {
     public static String APP_LOCATION = "NoticeRee";
     public static String CONFIG_LOCATION = "config";
     public static String DATA_LOCATION = "data";
+    public static String LOG_LOCATION = "logs";
 
     private static String workingDirectory = "";
 

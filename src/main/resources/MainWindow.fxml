@@ -18,54 +18,22 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.astraljaeger.noticeree.Controllers.MainController">
+<AnchorPane prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.astraljaeger.noticeree.controllers.MainController">
    <children>
       <TabPane fx:id="mainTp" layoutX="155.0" layoutY="37.0" prefHeight="200.0" prefWidth="200.0" tabClosingPolicy="UNAVAILABLE" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
         <tabs>
-          <Tab closable="false" text="Welcome Messages">
-            <content>
-                <AnchorPane xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1">
-                    <children>
-                        <TableView fx:id="welcomeMsgTv" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="45.0" AnchorPane.topAnchor="0.0">
-                            <columns>
-                                <TableColumn prefWidth="150.0" text="Chatter" />
-                              <TableColumn prefWidth="75.0" text="Count" />
-                                <TableColumn prefWidth="325.0" text="Message" />
-                            </columns>
-                        </TableView>
-                        <VBox layoutX="268.0" layoutY="114.0" prefHeight="200.0" spacing="5.0" AnchorPane.bottomAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-                            <children>
-                                <Button fx:id="addWelcomeMsgBtn" mnemonicParsing="false" prefHeight="35.0" prefWidth="35.0" text="+">
-                                    <font>
-                                        <Font size="14.0" />
-                                    </font>
-                                </Button>
-                                <Button fx:id="removeWelcomeMsgBtn" mnemonicParsing="false" prefHeight="35.0" prefWidth="35.0" text="-">
-                                    <font>
-                                        <Font size="14.0" />
-                                    </font>
-                                </Button>
-                            </children>
-                            <padding>
-                                <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
-                            </padding>
-                        </VBox>
-                    </children>
-                </AnchorPane>
-            </content>
-          </Tab>
-          <Tab closable="false" text="NoticeMe Sounds">
+          <Tab closable="false" text="Chatters">
             <content>
 
             </content>
                <content>
                   <AnchorPane prefHeight="200.0" prefWidth="200.0">
                      <children>
-                        <TableView fx:id="noticeMeTv" prefHeight="200.0" prefWidth="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="45.0" AnchorPane.topAnchor="0.0">
+                        <TableView fx:id="chattersTv" prefHeight="200.0" prefWidth="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="45.0" AnchorPane.topAnchor="0.0">
                           <columns>
-                            <TableColumn prefWidth="150.0" text="Chatter" />
-                            <TableColumn prefWidth="75.0" text="Count" />
-                              <TableColumn prefWidth="325.0" text="Sound" />
+                            <TableColumn fx:id="chattersNameCol" prefWidth="150.0" text="Chatter" />
+                              <TableColumn fx:id="chattersMessageCol" prefWidth="150.0" text="Message" />
+                              <TableColumn fx:id="chattersSoundsCol" prefWidth="250.0" text="Sounds" />
                           </columns>
                         </TableView>
                         <VBox prefWidth="45.0" spacing="5.0" AnchorPane.bottomAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
@@ -73,27 +41,27 @@
                               <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
                            </padding>
                            <children>
-                              <Button fx:id="addNoticeMeBtn" mnemonicParsing="false" prefHeight="35.0" prefWidth="35.0" text="+">
+                              <Button fx:id="addBtn" mnemonicParsing="false" prefHeight="35.0" prefWidth="35.0" text="+">
                                  <font>
                                     <Font size="14.0" />
                                  </font>
                               </Button>
-                              <Button fx:id="removeNoticeMeBtn" layoutX="15.0" layoutY="15.0" mnemonicParsing="false" prefHeight="35.0" prefWidth="35.0" text="-">
+                              <Button fx:id="removeBtn" layoutX="15.0" layoutY="15.0" mnemonicParsing="false" prefHeight="35.0" prefWidth="35.0" text="-">
                                  <font>
                                     <Font size="14.0" />
                                  </font>
                               </Button>
-                              <Button fx:id="playNoticeMeBtn" layoutX="15.0" layoutY="15.0" mnemonicParsing="false" prefHeight="35.0" prefWidth="35.0" text="⏯">
+                              <Button fx:id="editBtn" mnemonicParsing="false" prefHeight="35.0" prefWidth="35.0" text="-">
                                  <font>
                                     <Font size="14.0" />
                                  </font>
                               </Button>
-                              <Button fx:id="stopNoticeMeBtn" layoutX="15.0" layoutY="15.0" mnemonicParsing="false" prefHeight="35.0" prefWidth="35.0" text="◼">
+                              <Button fx:id="playBtn" layoutX="15.0" layoutY="15.0" mnemonicParsing="false" prefHeight="35.0" prefWidth="35.0" text="⏯">
                                  <font>
                                     <Font size="14.0" />
                                  </font>
                               </Button>
-                              <Button fx:id="applyFilterNoticeMeBtn" layoutX="15.0" layoutY="15.0" mnemonicParsing="false" prefHeight="35.0" prefWidth="35.0" text="🔈">
+                              <Button fx:id="stopBtn" layoutX="15.0" layoutY="15.0" mnemonicParsing="false" prefHeight="35.0" prefWidth="35.0" text="◼">
                                  <font>
                                     <Font size="14.0" />
                                  </font>
@@ -104,27 +72,6 @@
                   </AnchorPane>
                </content>
           </Tab>
-            <Tab closable="false" text="Chatters">
-               <content>
-
-               </content>
-               <content>
-                  <AnchorPane prefHeight="200.0" prefWidth="200.0">
-                     <children>
-                        <TableView fx:id="chattersTv" layoutX="131.0" layoutY="38.0" prefHeight="200.0" prefWidth="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-                          <columns>
-                            <TableColumn prefWidth="150.0" text="Chatter" />
-                            <TableColumn prefWidth="50.0" text="Sub" />
-                              <TableColumn prefWidth="50.0" text="Msg" />
-                              <TableColumn prefWidth="50.0" text="Sound" />
-                              <TableColumn prefWidth="150.0" text="Message" />
-                              <TableColumn prefWidth="150.0" text="Sound" />
-                          </columns>
-                        </TableView>
-                     </children>
-                  </AnchorPane>
-               </content>
-            </Tab>
             <Tab closable="false" text="Settings">
                <content>
 

@@ -1,4 +1,4 @@
-package org.astraljaeger.noticeree.DataTools;
+package org.astraljaeger.noticeree.DataTools.Data;
 
 import lombok.Getter;
 import lombok.Setter;
