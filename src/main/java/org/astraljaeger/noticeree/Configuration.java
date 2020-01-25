@@ -8,9 +8,12 @@ import java.io.File;
 
 public class Configuration {
 
-    public static String APP_LOCATION = "NoticeRee";
-    public static String CONFIG_LOCATION = "config";
-    public static String DATA_LOCATION = "data";
+    public static final String APP_LOCATION = "NoticeRee";
+    public static final String CONFIG_LOCATION = "config";
+    public static final String DATA_LOCATION = "data";
+    public static final String LOG_LOCATION = "logs";
+
+    public static final boolean USE_PERSISTANCE = true;
 
     private static String workingDirectory = "";
 

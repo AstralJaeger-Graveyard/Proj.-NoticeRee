@@ -1,4 +1,4 @@
-package org.astraljaeger.noticeree.Controllers;
+package org.astraljaeger.noticeree.controllers;
 
 import javafx.stage.Stage;
 

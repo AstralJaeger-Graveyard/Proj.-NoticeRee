@@ -9,22 +9,16 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import org.astraljaeger.noticeree.Controllers.MainController;
-
-import java.util.Arrays;
+import org.astraljaeger.noticeree.controllers.MainController;
 
 public class NoticeRee extends Application {
 
-    private static String[] arguments;
-
     public static void main(String[] args) {
-        arguments = args;
         launch(args);
     }
 
     @Override
     public void start(Stage primaryStage) {
-        System.out.println(Arrays.toString(arguments));
 
         try {
             final FXMLLoader loader = new FXMLLoader(getClass().getResource("/MainWindow.fxml"));

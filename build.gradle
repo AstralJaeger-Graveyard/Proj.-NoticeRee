@@ -7,11 +7,14 @@ plugins {
     id 'java'
     id 'application'
     id 'org.openjfx.javafxplugin' version '0.0.8'
+    id "org.sonarqube" version "2.7"
 }
 
 group = 'org.astraljaeger'
 version = '1.0-ALPHA'
 sourceCompatibility = 11
+
+applicationDefaultJvmArgs = ["-XX:+UseG1GC"]
 
 repositories {
     mavenCentral()
@@ -63,16 +66,6 @@ javafx {
 
 application {
     mainClassName = 'org.astraljaeger.noticeree.NoticeRee'
-}
-
-task eraseConfig(type: Delete){
-    group = 'build'
-    description = 'Destroys old configuration files'
-    doFirst{
-        configFiles = "C:\\Users\\Felix\\AppData\\Roaming\\NoticeRee"
-        delete configFiles
-        println "destroyed $configFiles"
-    }
 }
 
 task greet{

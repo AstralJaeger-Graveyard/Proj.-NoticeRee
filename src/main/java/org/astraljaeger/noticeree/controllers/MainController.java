@@ -1,4 +1,4 @@
-package org.astraljaeger.noticeree.Controllers;
+package org.astraljaeger.noticeree.controllers;
 
 import com.github.philippheuer.credentialmanager.CredentialManager;
 import com.github.philippheuer.credentialmanager.CredentialManagerBuilder;
@@ -12,57 +12,69 @@ import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.stage.Stage;
 import javafx.util.Pair;
-import org.astraljaeger.noticeree.DataTools.ConfigStore;
-import org.astraljaeger.noticeree.DataTools.DataStore;
 import org.astraljaeger.noticeree.Utils;
+import org.astraljaeger.noticeree.datatools.ConfigStore;
+import org.astraljaeger.noticeree.datatools.DataStore;
+import org.astraljaeger.noticeree.datatools.data.Chatter;
+import org.astraljaeger.noticeree.datatools.data.MixerHelper;
 
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Line;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.SourceDataLine;
+import java.net.URI;
 import java.util.List;
 import java.util.Optional;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+
+import static java.awt.Desktop.*;
 
 public class MainController {
 
     private final Logger logger = Logger.getLogger(MainController.class.getSimpleName());
 
+    // region FXML Fields
+
     @FXML
     public TabPane mainTp;
 
     @FXML
-    public TableView welcomeMsgTv;
+    public TableView<Chatter> chattersTv;
 
     @FXML
-    public TableView noticeMeTv;
+    public TableColumn<Integer, Chatter> chattersIDCol;
 
     @FXML
-    public TableView chattersTv;
+    public TableColumn<String, Chatter> chattersUsernameCol;
 
     @FXML
-    public Button addWelcomeMsgBtn;
+    public TableColumn<String, Chatter> chattersMessageCol;
 
     @FXML
-    public Button removeWelcomeMsgBtn;
+    public TableColumn<String, Chatter> chattersSoundsCol;
 
     @FXML
-    public Button addNoticeMeBtn;
+    public TableColumn<String, Chatter> chattersLastUsedCol;
 
     @FXML
-    public Button removeNoticeMeBtn;
+    public Button addBtn;
 
     @FXML
-    public Button playNoticeMeBtn;
+    public Button removeBtn;
 
     @FXML
-    public Button stopNoticeMeBtn;
+    public Button editBtn;
 
     @FXML
-    public Button applyFilterNoticeMeBtn;
+    public Button playBtn;
+
+    @FXML
+    public Button stopBtn;
 
     @FXML
     public Button testAudioBtn;
@@ -74,10 +86,12 @@ public class MainController {
     public Hyperlink channelLink;
 
     @FXML
-    public ChoiceBox<Object> audioOutputCb;
+    public ChoiceBox<MixerHelper> audioOutputCb;
 
     @FXML
     public TextField channelTf;
+
+    // endregion
 
     Stage primaryStage;
     DataStore store;
@@ -85,17 +99,13 @@ public class MainController {
 
     DataStore dataStore;
 
-    Mixer.Info device;
+    MixerHelper device;
 
-    private final String CLIENT_ID = "i76h7g9dys23tnsp4q5qbc9vezpwfb";
-
-    public MainController(){
-
-    }
+    private static final String CLIENT_ID = "i76h7g9dys23tnsp4q5qbc9vezpwfb";
 
     @FXML
     public void initialize(){
-
+        logger.setLevel(Level.ALL);
         logger.fine("Starting login process");
         client = doLogin();
 
@@ -105,27 +115,53 @@ public class MainController {
         logger.fine("Inizialising database manager");
         dataStore = DataStore.getInstance();
 
+        logger.fine("Binding data");
+        setupTableView();
+
+        logger.fine("Setup program exit event");
         if(primaryStage != null){
             primaryStage.onCloseRequestProperty().addListener(((observable, oldValue, newValue) -> {
-                // TODO: Close db and things
+                // TODO: Close db and FIND THE FUCK OUT WHY THIS DOES NOT TERMINATE!
+                logger.info("Terminating application");
+                client.getChat().disconnect();
+                store.close();
                 Platform.exit();
             }));
         }
 
-        mainTp.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+        logger.fine("Setup tab change event");
+        mainTp.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
             logger.info(String.format("Changed tab from '%d' to '%d'",
                     mainTp.getTabs().indexOf(oldValue),
-                    mainTp.getTabs().indexOf(newValue)));
-            // TODO: surely there is something to do here
+                    mainTp.getTabs().indexOf(newValue)))
+        );
+
+        logger.fine("Setup add sound event");
+        addBtn.setOnAction(event -> {
+            // TODO: implement add option
+            var instance = DataStore.getInstance();
+            instance.addChatter(new Chatter("username"));
         });
 
-        audioOutputCb.getSelectionModel().selectedItemProperty().addListener((observable) -> {
-            // TODO: play the test sound every time the output device is changed on that device
+        logger.fine("Setup edit sound event");
+        editBtn.setOnAction(event -> {
+            // TODO: implement edit option
+
         });
+
+        logger.fine("Setup remove sound event");
+        removeBtn.setOnAction(event -> {
+            // TODO: implement remove option
+            var instance = DataStore.getInstance();
+            var item = chattersTv.getSelectionModel().getSelectedItem();
+            if(item == null)
+                return;
+            instance.removeChatter(item);
+        });
+
     }
 
     private TwitchClient doLogin() {
-
         CredentialManager credentialManager = CredentialManagerBuilder.builder()
                 .withStorageBackend(new TemporaryStorageBackend())
                 .build();
@@ -133,20 +169,20 @@ public class MainController {
         TwitchIdentityProvider twitchIdentityProvider = new TwitchIdentityProvider(CLIENT_ID, "", "");
         credentialManager.registerIdentityProvider(twitchIdentityProvider);
         String provider = twitchIdentityProvider.getProviderName();
-        ConfigStore store = ConfigStore.getInstance();
+        ConfigStore configStore = ConfigStore.getInstance();
 
         OAuth2Credential credential = null;
         OAuth2Credential result = null;
         String errorMessage = "";
 
-        if(!store.getToken().equals("")){
+        if(!configStore.getToken().equals("")){
             // get token from store
-            String token = store.getToken();
+            String token = configStore.getToken();
             credential = new OAuth2Credential(provider, token);
             Optional<OAuth2Credential> storeOptional = twitchIdentityProvider.getAdditionalCredentialInformation(credential);
             if(storeOptional.isPresent()){
                 result = storeOptional.get();
-            }else {
+            } else {
                 errorMessage = "Stored token is invalid, please re-enter";
             }
         }
@@ -167,8 +203,9 @@ public class MainController {
             Optional<OAuth2Credential> loginOptional = twitchIdentityProvider.getAdditionalCredentialInformation(credential);
             if(loginOptional.isPresent()){
                 result = loginOptional.get();
+                dialog.close();
                 if(save){
-                    store.setToken(token);
+                    configStore.setToken(token);
                 }
             }else {
                 errorMessage = "Please enter a valid token";
@@ -176,9 +213,7 @@ public class MainController {
         }
 
        logger.info("Welcome " + result.getUserName());
-
-        store.setUsername(result.getUserName());
-
+        configStore.setUsername(result.getUserName());
 
         return TwitchClientBuilder.builder()
                 .withCredentialManager(credentialManager)
@@ -190,53 +225,68 @@ public class MainController {
     }
 
     public void setUiFromConfig(){
-        ConfigStore store = ConfigStore.getInstance();
+        ConfigStore configStore = ConfigStore.getInstance();
 
         // Set links in about
-        usernameLink.setText(store.getUsername());
+        usernameLink.setText(configStore.getUsername());
         usernameLink.setOnAction(event -> {
             openUriInBrowser("https://www.twitch.tv/" + usernameLink.getText());
         });
 
-        channelLink.setText(store.getChannel());
+        channelLink.setText(configStore.getChannel());
         channelLink.setOnAction(event -> {
             openUriInBrowser("https://www.twitch.tv/" + channelLink.getText());
         });
 
-        channelTf.setText(store.getChannel());
+        channelTf.setText(configStore.getChannel());
         channelTf.textProperty().addListener(((observable, oldValue, newValue) -> {
             logger.fine("Setting channel name to " + newValue);
             channelTf.setText(newValue);
-            store.setChannel(newValue);
+            configStore.setChannel(newValue);
         }));
 
         // Get list of audio devices and set configured device
         List<Mixer> devices = getPlaybackDevices();
         if(devices.size() != 0) {
-            audioOutputCb.setItems(FXCollections.observableArrayList(devices));
+
+            // Collect devices
+            audioOutputCb.setItems(FXCollections.observableArrayList(
+                    devices.stream()
+                            .map(mixer -> new MixerHelper(
+                                    mixer.getMixerInfo().getName(),
+                                    mixer.getMixerInfo().getDescription(),
+                                    mixer))
+                            .collect(Collectors.toList()))
+            );
+
+            // Device changed event
             audioOutputCb.getSelectionModel().selectedItemProperty().addListener(((observable, oldValue, newValue) -> {
-                device = ((Mixer) newValue).getMixerInfo();
+                device = newValue;
                 logger.info("Setting new playback device");
-                store.setDefaultOutputDevice(device);
+                playTestSound(device);
+                configStore.setDefaultOutputDevice(device.getMixer().getMixerInfo());
             }));
 
             // Restore playback device config
-            Mixer.Info configuredMixer = store.getDefaultOutputDevice();
+            Mixer.Info configuredMixer = configStore.getDefaultOutputDevice();
             if(configuredMixer != null) {
-                int index = findMixerInfo(devices, configuredMixer);
+                int index = findMixerInfo(audioOutputCb.getItems(), configuredMixer);
                 if (index != -1) {
                     logger.info(String.format("Found stored playback device: [%d] %s", index, configuredMixer));
                     audioOutputCb.getSelectionModel().select(index);
                 }
-            }else {
+            }
+            else {
+                // TODO: Consider giving a window to tell the user to configure a playback device
                 logger.info("No playback device set, defaulting to 1st found device: " + ((Mixer)audioOutputCb.getItems().get(0)).getMixerInfo().getName());
                 audioOutputCb.getSelectionModel().select(0);
             }
-        }else {
+        }
+        else {
             // TODO: flag error that no output devices were found
+            logger.info("No playback devices were found!");
         }
     }
-
 
     private List<Mixer> getPlaybackDevices(){
         logger.info("Gathering audio playback devices");
@@ -255,15 +305,28 @@ public class MainController {
         return results;
     }
 
-    private void playTestSound(Mixer.Info mixerInfo){
+    private void setupTableView(){
+        logger.info("Setting up data bindings");
+        chattersTv.setPlaceholder(new Label("Much empty! Such wow!"));
+        chattersTv.setItems(DataStore.getInstance().getChattersList());
+        // chattersIDCol.setCellValueFactory(new PropertyValueFactory<>("id"));
+        chattersUsernameCol.setCellValueFactory(new PropertyValueFactory<>("username"));
+        chattersMessageCol.setCellValueFactory(new PropertyValueFactory<>("welcomeMessage"));
+        chattersSoundsCol.setCellValueFactory(new PropertyValueFactory<>("sounds"));
+        chattersLastUsedCol.setCellValueFactory(new PropertyValueFactory<>("lastUsed"));
 
+        // Set better renderer for username, lastUsed and sounds
+    }
+
+    private void playTestSound(MixerHelper mixerInfo){
+        logger.fine("Playing test sound on " + mixerInfo);
         // TODO: play sound on selected mixer
     }
 
-    private int findMixerInfo(List<Mixer> infos, Mixer.Info target){
+    private int findMixerInfo(List<MixerHelper> helpers, Mixer.Info target){
         int i = 0;
-        for(Mixer mixer:infos){
-            Mixer.Info info = mixer.getMixerInfo();
+        for(MixerHelper helper: helpers){
+            Mixer.Info info = helper.getMixer().getMixerInfo();
             if(info.getName().equals(target.getName()) && info.getDescription().equals(target.getDescription())){
                 return i;
             }
@@ -277,13 +340,13 @@ public class MainController {
     }
 
     private void openUriInBrowser(String uri){
-//        if (Desktop.isDesktopSupported()) {
-//            Desktop desktop = Desktop.getDesktop();
-//            if(desktop.isSupported(Desktop.Action.BROWSE)){
-//                try {
-//                    desktop.browse(new URI(uri));
-//                }catch (Exception ignored){}
-//            }
-//        }
+        if (isDesktopSupported()) {
+            var desktop = getDesktop();
+            if(desktop.isSupported(Action.BROWSE)){
+                try {
+                    desktop.browse(new URI(uri));
+                }catch (Exception ignored){}
+            }
+        }
     }
 }
