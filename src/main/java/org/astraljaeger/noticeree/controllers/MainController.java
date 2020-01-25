@@ -307,7 +307,7 @@ public class MainController {
 
         // Set better renderer for sounds
     }
-    
+
     private void playTestSound(MixerHelper mixerInfo){
 
         // TODO: play sound on selected mixer
