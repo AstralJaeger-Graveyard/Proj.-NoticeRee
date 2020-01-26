@@ -11,8 +11,12 @@ import com.google.common.collect.Lists;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Pair;
 import org.astraljaeger.noticeree.Utils;
@@ -25,6 +29,7 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Line;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.SourceDataLine;
+import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import java.util.Optional;
@@ -139,8 +144,27 @@ public class MainController {
         logger.fine("Setup add sound event");
         addBtn.setOnAction(event -> {
             // TODO: implement add option
-            var instance = DataStore.getInstance();
-            instance.addChatter(new Chatter("username"));
+            Chatter chatter = new Chatter();
+            chatter.usernameProperty().addListener(((observable, oldValue, newValue) -> {
+                logger.info("New username: " + newValue);
+            }));
+            try {
+                final FXMLLoader loader = new FXMLLoader(getClass().getResource("/EditorWindow.fxml"));
+                final Parent root = loader.load();
+                final EditorController controller = loader.getController();
+                controller.bind(chatter);
+
+                final Stage popupStage = new Stage();
+                popupStage.setScene(new Scene(root));
+                popupStage.initOwner(primaryStage);
+                popupStage.initModality(Modality.APPLICATION_MODAL);
+                popupStage.setTitle("Add new user");
+                popupStage.showAndWait();
+            }catch (IOException ignored){
+
+            }
+            logger.info("Added chatter: " + chatter);
+            dataStore.addChatter(chatter);
         });
 
         logger.fine("Setup edit sound event");
@@ -247,7 +271,7 @@ public class MainController {
 
         // Get list of audio devices and set configured device
         List<Mixer> devices = getPlaybackDevices();
-        if(devices.size() != 0) {
+        if(devices.isEmpty()) {
 
             // Collect devices
             audioOutputCb.setItems(FXCollections.observableArrayList(
