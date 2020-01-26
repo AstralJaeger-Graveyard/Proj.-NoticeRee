@@ -3,9 +3,10 @@ package org.astraljaeger.noticeree.datatools.data;
 import javafx.beans.property.*;
 import javafx.collections.ObservableList;
 
+import java.util.ArrayList;
 import java.util.List;
 
-public class Chatter {
+public class Chatter implements Cloneable{
     private final StringProperty username;
 
     private final StringProperty welcomeMessage;
@@ -39,6 +40,13 @@ public class Chatter {
     public Chatter(String username, String welcomeMessage, List<String> sounds, long lastUsed){
         this(username, welcomeMessage, sounds);
         this.lastUsed.setValue(lastUsed);
+    }
+
+    public Chatter(Chatter other){
+        this(other.username.getValue(),
+                other.welcomeMessage.getValue(),
+                new ArrayList<String>(other.sounds),
+                other.lastUsed.getValue());
     }
 
     public String getUsername() {
