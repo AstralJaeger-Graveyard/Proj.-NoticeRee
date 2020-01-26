@@ -96,10 +96,10 @@ public class DataStore {
         chattersList.remove(chatter);
     }
 
-    public synchronized void updateChatter(Chatter old, Chatter updated){
-        logger.info("Updading chatter from " + old + " to " + updated);
+    public synchronized void updateChatter(String oldUsername, Chatter updated){
+        logger.info("Updading chatter from " + oldUsername + " to " + updated);
         if(Configuration.USE_PERSISTANCE){
-            collection.remove(eq(USERNAME, old.getUsername()));
+            collection.remove(eq(USERNAME, oldUsername));
             collection.insert(convertToDoc(updated));
         }
     }
