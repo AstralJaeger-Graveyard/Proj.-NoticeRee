@@ -16,6 +16,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Pair;
@@ -52,19 +53,16 @@ public class MainController {
     public TableView<Chatter> chattersTv;
 
     @FXML
-    public TableColumn<Integer, Chatter> chattersIDCol;
+    public TableColumn<Chatter, String> chattersUsernameCol;
 
     @FXML
-    public TableColumn<String, Chatter> chattersUsernameCol;
+    public TableColumn<Chatter, String> chattersMessageCol;
 
     @FXML
-    public TableColumn<String, Chatter> chattersMessageCol;
+    public TableColumn<Chatter, String> chattersSoundsCol;
 
     @FXML
-    public TableColumn<String, Chatter> chattersSoundsCol;
-
-    @FXML
-    public TableColumn<String, Chatter> chattersLastUsedCol;
+    public TableColumn<Chatter, String> chattersLastUsedCol;
 
     @FXML
     public Button addBtn;
@@ -143,26 +141,8 @@ public class MainController {
 
         logger.fine("Setup add sound event");
         addBtn.setOnAction(event -> {
-            // TODO: implement add option
             Chatter chatter = new Chatter();
-            chatter.usernameProperty().addListener(((observable, oldValue, newValue) -> {
-                logger.info("New username: " + newValue);
-            }));
-            try {
-                final FXMLLoader loader = new FXMLLoader(getClass().getResource("/EditorWindow.fxml"));
-                final Parent root = loader.load();
-                final EditorController controller = loader.getController();
-                controller.bind(chatter);
-
-                final Stage popupStage = new Stage();
-                popupStage.setScene(new Scene(root));
-                popupStage.initOwner(primaryStage);
-                popupStage.initModality(Modality.APPLICATION_MODAL);
-                popupStage.setTitle("Add new user");
-                popupStage.showAndWait();
-            }catch (IOException ignored){
-
-            }
+            openEditorWindow(chatter, "Adding new user");
             logger.info("Added chatter: " + chatter);
             dataStore.addChatter(chatter);
         });
@@ -333,9 +313,29 @@ public class MainController {
         logger.info("Setting up data bindings");
         chattersTv.setPlaceholder(new Label("Much empty! Such wow!"));
         chattersTv.setItems(DataStore.getInstance().getChattersList());
-        // chattersIDCol.setCellValueFactory(new PropertyValueFactory<>("id"));
+        chattersTv.setEditable(true);
         chattersUsernameCol.setCellValueFactory(new PropertyValueFactory<>("username"));
+        chattersUsernameCol.setCellFactory(TextFieldTableCell.forTableColumn());
+        chattersUsernameCol.setOnEditCommit((TableColumn.CellEditEvent<Chatter, String> t)->{
+            String oldUsername = t.getOldValue();
+                t.getTableView()
+                .getItems()
+                .get(t.getTablePosition().getRow())
+                .usernameProperty()
+                .setValue(t.getNewValue());
+                dataStore.updateChatter(oldUsername, t.getRowValue());
+        });
         chattersMessageCol.setCellValueFactory(new PropertyValueFactory<>("welcomeMessage"));
+        chattersMessageCol.setCellFactory(TextFieldTableCell.forTableColumn());
+        chattersMessageCol.setOnEditCommit((TableColumn.CellEditEvent<Chatter, String> t)->{
+            String oldUsername = t.getRowValue().getUsername();
+            t.getTableView()
+                    .getItems()
+                    .get(t.getTablePosition().getRow())
+                    .welcomeMessageProperty()
+                    .setValue(t.getNewValue());
+            dataStore.updateChatter(oldUsername, t.getRowValue());
+        });
         chattersSoundsCol.setCellValueFactory(new PropertyValueFactory<>("sounds"));
         chattersLastUsedCol.setCellValueFactory(new PropertyValueFactory<>("lastUsed"));
 
@@ -369,8 +369,28 @@ public class MainController {
             if(desktop.isSupported(Action.BROWSE)){
                 try {
                     desktop.browse(new URI(uri));
-                }catch (Exception ignored){}
+                } catch (Exception e) {
+                    logger.info("Not able to open browser: " + e.getMessage());
+                }
             }
+        }
+    }
+
+    private void openEditorWindow(Chatter chatter, String title){
+        try {
+            final FXMLLoader loader = new FXMLLoader(getClass().getResource("/EditorWindow.fxml"));
+            final Parent root = loader.load();
+            final EditorController controller = loader.getController();
+            controller.bind(chatter);
+
+            final Stage popupStage = new Stage();
+            popupStage.setScene(new Scene(root));
+            popupStage.initOwner(primaryStage);
+            popupStage.initModality(Modality.APPLICATION_MODAL);
+            popupStage.setTitle(title);
+            popupStage.showAndWait();
+        }catch (IOException e){
+            logger.info("Error opening editor window: " + e.getMessage());
         }
     }
 }
