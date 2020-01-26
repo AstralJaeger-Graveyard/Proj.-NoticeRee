@@ -40,6 +40,7 @@ import java.util.stream.Collectors;
 
 import static java.awt.Desktop.*;
 
+@SuppressWarnings({"unused"})
 public class MainController {
 
     private final Logger logger = Logger.getLogger(MainController.class.getSimpleName());
@@ -141,7 +142,7 @@ public class MainController {
 
         logger.fine("Setup add sound event");
         addBtn.setOnAction(event -> {
-            Chatter chatter = new Chatter();
+            Chatter chatter = new Chatter("New User");
             openEditorWindow(chatter, "Adding new user");
             logger.info("Added chatter: " + chatter);
             dataStore.addChatter(chatter);
@@ -149,18 +150,23 @@ public class MainController {
 
         logger.fine("Setup edit sound event");
         editBtn.setOnAction(event -> {
-            // TODO: implement edit option
-
+            Chatter selected = chattersTv.getSelectionModel().getSelectedItem();
+            if(selected != null){
+                String oldUsername = selected.getUsername();
+                openEditorWindow(selected, "Editing user " + oldUsername);
+                logger.info("Updating chatter: " + oldUsername  + (!oldUsername.equals(selected.getUsername()) ? "" : " to " + selected.getUsername()));
+                dataStore.updateChatter(oldUsername, selected);
+            }
         });
 
         logger.fine("Setup remove sound event");
         removeBtn.setOnAction(event -> {
-            // TODO: implement remove option
-            var instance = DataStore.getInstance();
-            var item = chattersTv.getSelectionModel().getSelectedItem();
-            if(item == null)
-                return;
-            instance.removeChatter(item);
+            // might wanna add a safety dialog here
+            Chatter toRemove = chattersTv.getSelectionModel().getSelectedItem();
+            if(toRemove != null){
+                logger.info("Removing chatter: " + toRemove);
+                dataStore.removeChatter(toRemove);
+            }
         });
 
     }
@@ -345,6 +351,7 @@ public class MainController {
     private void playTestSound(MixerHelper mixerInfo){
         logger.fine("Playing test sound on " + mixerInfo);
         // TODO: play sound on selected mixer
+
     }
 
     private int findMixerInfo(List<MixerHelper> helpers, Mixer.Info target){
@@ -384,6 +391,7 @@ public class MainController {
             controller.bind(chatter);
 
             final Stage popupStage = new Stage();
+            controller.setPrimaryStage(popupStage);
             popupStage.setScene(new Scene(root));
             popupStage.initOwner(primaryStage);
             popupStage.initModality(Modality.APPLICATION_MODAL);

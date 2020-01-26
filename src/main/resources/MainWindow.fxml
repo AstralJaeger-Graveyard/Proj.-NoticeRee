@@ -31,7 +31,6 @@
                      <children>
                         <TableView fx:id="chattersTv" prefHeight="200.0" prefWidth="200.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="45.0" AnchorPane.topAnchor="0.0">
                           <columns>
-                              <TableColumn fx:id="chattersIDCol" maxWidth="50.0" prefWidth="35.0" text="ID" />
                             <TableColumn fx:id="chattersUsernameCol" prefWidth="150.0" text="Username" />
                               <TableColumn fx:id="chattersLastUsedCol" prefWidth="75.0" text="Last Used" />
                               <TableColumn fx:id="chattersMessageCol" prefWidth="150.0" text="Message" />

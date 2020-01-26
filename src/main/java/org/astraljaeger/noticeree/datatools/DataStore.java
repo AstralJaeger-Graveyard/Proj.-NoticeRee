@@ -4,6 +4,7 @@
 
 package org.astraljaeger.noticeree.datatools;
 
+import com.google.gson.Gson;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import lombok.Getter;
@@ -15,10 +16,8 @@ import org.dizitart.no2.event.ChangedItem;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -39,8 +38,8 @@ public class DataStore {
         return instance;
     }
 
+    private Gson serializer;
     private Nitrite db;
-
     private NitriteCollection collection;
 
     @Getter
@@ -48,6 +47,7 @@ public class DataStore {
 
     private static final String USERNAME = "username";
     private static final String WELCOME_MESSAGE = "welcomeMessage";
+    private static final String SOUNDS_COUNT = "soundsCount";
     private static final String SOUNDS = "sounds";
     private static final String LAST_USED = "lastUsed";
 
@@ -56,6 +56,8 @@ public class DataStore {
 
         if(Configuration.USE_PERSISTANCE) {
             checkOrCreateFolder();
+
+            serializer = new Gson();
 
             db = Nitrite.builder()
                     .filePath(Configuration.getAppDataDirectory() + FILE_NAME)
@@ -73,7 +75,6 @@ public class DataStore {
                             .map(ChangedItem::getDocument)
                             .map(doc -> doc.get(USERNAME).toString())
                             .collect(Collectors.joining(", "))));
-
             load();
         }
     }
@@ -133,21 +134,16 @@ public class DataStore {
         for(Document doc : results){
             String username = doc.get(USERNAME, String.class);
             String message = doc.get(WELCOME_MESSAGE, String.class);
-            List<String> sounds = new ArrayList<>();
-            if(doc.get(SOUNDS, List.class) != null) {
-                for(Object o: doc.get(SOUNDS, List.class))
-                    if(o instanceof String)
-                        sounds.add((String)o);
-            }
+            String[] sounds = doc.get(SOUNDS, String[].class);
             Long lastUsed = doc.get(LAST_USED, Long.class);
-            chattersList.add(new Chatter(username, message, sounds, lastUsed));
+            chattersList.add(new Chatter(username, message, Arrays.asList(sounds), lastUsed));
         }
     }
 
     private Document convertToDoc(Chatter chatter){
         return createDocument(USERNAME, chatter.getUsername())
                 .put(WELCOME_MESSAGE, chatter.getWelcomeMessage())
-                .put(SOUNDS, chatter.getSounds())
+                .put(SOUNDS, chatter.getSounds().toArray(new String[0]))
                 .put(LAST_USED, chatter.getLastUsed());
     }
 
