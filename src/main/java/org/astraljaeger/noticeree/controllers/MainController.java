@@ -11,8 +11,13 @@ import com.google.common.collect.Lists;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.control.cell.TextFieldTableCell;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Pair;
 import org.astraljaeger.noticeree.Utils;
@@ -25,6 +30,7 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Line;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.SourceDataLine;
+import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import java.util.Optional;
@@ -34,6 +40,7 @@ import java.util.stream.Collectors;
 
 import static java.awt.Desktop.*;
 
+@SuppressWarnings({"unused"})
 public class MainController {
 
     private final Logger logger = Logger.getLogger(MainController.class.getSimpleName());
@@ -47,19 +54,16 @@ public class MainController {
     public TableView<Chatter> chattersTv;
 
     @FXML
-    public TableColumn<Integer, Chatter> chattersIDCol;
+    public TableColumn<Chatter, String> chattersUsernameCol;
 
     @FXML
-    public TableColumn<String, Chatter> chattersUsernameCol;
+    public TableColumn<Chatter, String> chattersMessageCol;
 
     @FXML
-    public TableColumn<String, Chatter> chattersMessageCol;
+    public TableColumn<Chatter, String> chattersSoundsCol;
 
     @FXML
-    public TableColumn<String, Chatter> chattersSoundsCol;
-
-    @FXML
-    public TableColumn<String, Chatter> chattersLastUsedCol;
+    public TableColumn<Chatter, String> chattersLastUsedCol;
 
     @FXML
     public Button addBtn;
@@ -138,25 +142,31 @@ public class MainController {
 
         logger.fine("Setup add sound event");
         addBtn.setOnAction(event -> {
-            // TODO: implement add option
-            var instance = DataStore.getInstance();
-            instance.addChatter(new Chatter("username"));
+            Chatter chatter = new Chatter("New User");
+            openEditorWindow(chatter, "Adding new user");
+            logger.info("Added chatter: " + chatter);
+            dataStore.addChatter(chatter);
         });
 
         logger.fine("Setup edit sound event");
         editBtn.setOnAction(event -> {
-            // TODO: implement edit option
-
+            Chatter selected = chattersTv.getSelectionModel().getSelectedItem();
+            if(selected != null){
+                String oldUsername = selected.getUsername();
+                openEditorWindow(selected, "Editing user " + oldUsername);
+                logger.info("Updating chatter: " + oldUsername  + (!oldUsername.equals(selected.getUsername()) ? "" : " to " + selected.getUsername()));
+                dataStore.updateChatter(oldUsername, selected);
+            }
         });
 
         logger.fine("Setup remove sound event");
         removeBtn.setOnAction(event -> {
-            // TODO: implement remove option
-            var instance = DataStore.getInstance();
-            var item = chattersTv.getSelectionModel().getSelectedItem();
-            if(item == null)
-                return;
-            instance.removeChatter(item);
+            // might wanna add a safety dialog here
+            Chatter toRemove = chattersTv.getSelectionModel().getSelectedItem();
+            if(toRemove != null){
+                logger.info("Removing chatter: " + toRemove);
+                dataStore.removeChatter(toRemove);
+            }
         });
 
     }
@@ -229,14 +239,10 @@ public class MainController {
 
         // Set links in about
         usernameLink.setText(configStore.getUsername());
-        usernameLink.setOnAction(event -> {
-            openUriInBrowser("https://www.twitch.tv/" + usernameLink.getText());
-        });
+        usernameLink.setOnAction(event -> openUriInBrowser("https://www.twitch.tv/" + usernameLink.getText()));
 
         channelLink.setText(configStore.getChannel());
-        channelLink.setOnAction(event -> {
-            openUriInBrowser("https://www.twitch.tv/" + channelLink.getText());
-        });
+        channelLink.setOnAction(event -> openUriInBrowser("https://www.twitch.tv/" + channelLink.getText()));
 
         channelTf.setText(configStore.getChannel());
         channelTf.textProperty().addListener(((observable, oldValue, newValue) -> {
@@ -247,7 +253,7 @@ public class MainController {
 
         // Get list of audio devices and set configured device
         List<Mixer> devices = getPlaybackDevices();
-        if(devices.size() != 0) {
+        if(devices.isEmpty()) {
 
             // Collect devices
             audioOutputCb.setItems(FXCollections.observableArrayList(
@@ -309,9 +315,27 @@ public class MainController {
         logger.info("Setting up data bindings");
         chattersTv.setPlaceholder(new Label("Much empty! Such wow!"));
         chattersTv.setItems(DataStore.getInstance().getChattersList());
-        // chattersIDCol.setCellValueFactory(new PropertyValueFactory<>("id"));
+        chattersTv.setEditable(true);
         chattersUsernameCol.setCellValueFactory(new PropertyValueFactory<>("username"));
+        chattersUsernameCol.setCellFactory(TextFieldTableCell.forTableColumn());
+        chattersUsernameCol.setOnEditCommit((TableColumn.CellEditEvent<Chatter, String> t)->{
+                t.getTableView()
+                .getItems()
+                .get(t.getTablePosition().getRow())
+                .usernameProperty()
+                .setValue(t.getNewValue());
+                dataStore.updateChatter(t.getOldValue(), t.getRowValue());
+        });
         chattersMessageCol.setCellValueFactory(new PropertyValueFactory<>("welcomeMessage"));
+        chattersMessageCol.setCellFactory(TextFieldTableCell.forTableColumn());
+        chattersMessageCol.setOnEditCommit((TableColumn.CellEditEvent<Chatter, String> t)->{
+            t.getTableView()
+                    .getItems()
+                    .get(t.getTablePosition().getRow())
+                    .welcomeMessageProperty()
+                    .setValue(t.getNewValue());
+            dataStore.updateChatter(t.getRowValue().getUsername(), t.getRowValue());
+        });
         chattersSoundsCol.setCellValueFactory(new PropertyValueFactory<>("sounds"));
         chattersLastUsedCol.setCellValueFactory(new PropertyValueFactory<>("lastUsed"));
 
@@ -321,6 +345,7 @@ public class MainController {
     private void playTestSound(MixerHelper mixerInfo){
         logger.fine("Playing test sound on " + mixerInfo);
         // TODO: play sound on selected mixer
+
     }
 
     private int findMixerInfo(List<MixerHelper> helpers, Mixer.Info target){
@@ -345,8 +370,29 @@ public class MainController {
             if(desktop.isSupported(Action.BROWSE)){
                 try {
                     desktop.browse(new URI(uri));
-                }catch (Exception ignored){}
+                } catch (Exception e) {
+                    logger.info("Not able to open browser: " + e.getMessage());
+                }
             }
+        }
+    }
+
+    private void openEditorWindow(Chatter chatter, String title){
+        try {
+            final FXMLLoader loader = new FXMLLoader(getClass().getResource("/EditorWindow.fxml"));
+            final Parent root = loader.load();
+            final EditorController controller = loader.getController();
+            controller.bind(chatter);
+
+            final Stage popupStage = new Stage();
+            controller.setPrimaryStage(popupStage);
+            popupStage.setScene(new Scene(root));
+            popupStage.initOwner(primaryStage);
+            popupStage.initModality(Modality.APPLICATION_MODAL);
+            popupStage.setTitle(title);
+            popupStage.showAndWait();
+        }catch (IOException e){
+            logger.info("Error opening editor window:\n " + e.getClass().getSimpleName()+ ": " + e.getMessage());
         }
     }
 }

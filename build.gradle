@@ -7,7 +7,8 @@ plugins {
     id 'java'
     id 'application'
     id 'org.openjfx.javafxplugin' version '0.0.8'
-    id "org.sonarqube" version "2.7"
+    id 'org.sonarqube' version '2.7'
+    id 'io.spring.dependency-management' version '1.0.1.RELEASE'
 }
 
 group = 'org.astraljaeger'
@@ -21,6 +22,12 @@ repositories {
     jcenter()
     maven { url "https://oss.jfrog.org/artifactory/libs-release"}
     maven { url "http://projectlombok.org/mavenrepo"}
+}
+
+dependencyManagement {
+    imports {
+        mavenBom 'org.apache.logging.log4j:log4j-bom:2.13.0'
+    }
 }
 
 dependencies {
@@ -50,6 +57,12 @@ dependencies {
     // Apache Commons
     implementation 'commons-codec:commons-codec:1.13'
     implementation 'commons-io:commons-io:2.6'
+
+    // Log4j
+    implementation 'org.apache.logging.log4j:log4j-api:2.13.0'
+    implementation 'org.apache.logging.log4j:log4j-core:2.13.0'
+    implementation 'org.apache.logging.log4j:log4j-slf4j-impl:2.13.0'
+    implementation 'org.apache.logging.log4j:log4j-bom:2.13.0'
 
     // Project Lombok
     implementation 'org.projectlombok:lombok:0.9.2'

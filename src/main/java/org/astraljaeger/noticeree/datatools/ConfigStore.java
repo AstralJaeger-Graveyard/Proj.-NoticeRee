@@ -46,10 +46,10 @@ public class ConfigStore {
     private Gson serializer;
     private StrongTextEncryptor encryptor;
 
-    private final String TOKEN_KEY = "token";
-    private final String USERNAME_KEY = "username";
-    private final String CHANNEL_KEY = "channel";
-    private final String DEFAULT_OUTPUT_DEVICE = "default_output_device";
+    private static final String TOKEN_KEY = "token";
+    private static final String USERNAME_KEY = "username";
+    private static final String CHANNEL_KEY = "channel";
+    private static final String DEFAULT_OUTPUT_DEVICE = "default_output_device";
 
     private ConfigStore(){
         serializer = new Gson();
