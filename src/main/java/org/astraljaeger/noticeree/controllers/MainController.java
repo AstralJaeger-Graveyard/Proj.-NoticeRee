@@ -239,14 +239,10 @@ public class MainController {
 
         // Set links in about
         usernameLink.setText(configStore.getUsername());
-        usernameLink.setOnAction(event -> {
-            openUriInBrowser("https://www.twitch.tv/" + usernameLink.getText());
-        });
+        usernameLink.setOnAction(event -> openUriInBrowser("https://www.twitch.tv/" + usernameLink.getText()));
 
         channelLink.setText(configStore.getChannel());
-        channelLink.setOnAction(event -> {
-            openUriInBrowser("https://www.twitch.tv/" + channelLink.getText());
-        });
+        channelLink.setOnAction(event -> openUriInBrowser("https://www.twitch.tv/" + channelLink.getText()));
 
         channelTf.setText(configStore.getChannel());
         channelTf.textProperty().addListener(((observable, oldValue, newValue) -> {
@@ -323,24 +319,22 @@ public class MainController {
         chattersUsernameCol.setCellValueFactory(new PropertyValueFactory<>("username"));
         chattersUsernameCol.setCellFactory(TextFieldTableCell.forTableColumn());
         chattersUsernameCol.setOnEditCommit((TableColumn.CellEditEvent<Chatter, String> t)->{
-            String oldUsername = t.getOldValue();
                 t.getTableView()
                 .getItems()
                 .get(t.getTablePosition().getRow())
                 .usernameProperty()
                 .setValue(t.getNewValue());
-                dataStore.updateChatter(oldUsername, t.getRowValue());
+                dataStore.updateChatter(t.getOldValue(), t.getRowValue());
         });
         chattersMessageCol.setCellValueFactory(new PropertyValueFactory<>("welcomeMessage"));
         chattersMessageCol.setCellFactory(TextFieldTableCell.forTableColumn());
         chattersMessageCol.setOnEditCommit((TableColumn.CellEditEvent<Chatter, String> t)->{
-            String oldUsername = t.getRowValue().getUsername();
             t.getTableView()
                     .getItems()
                     .get(t.getTablePosition().getRow())
                     .welcomeMessageProperty()
                     .setValue(t.getNewValue());
-            dataStore.updateChatter(oldUsername, t.getRowValue());
+            dataStore.updateChatter(t.getRowValue().getUsername(), t.getRowValue());
         });
         chattersSoundsCol.setCellValueFactory(new PropertyValueFactory<>("sounds"));
         chattersLastUsedCol.setCellValueFactory(new PropertyValueFactory<>("lastUsed"));
@@ -398,7 +392,7 @@ public class MainController {
             popupStage.setTitle(title);
             popupStage.showAndWait();
         }catch (IOException e){
-            logger.info("Error opening editor window: " + e.getMessage());
+            logger.info("Error opening editor window:\n " + e.getClass().getSimpleName()+ ": " + e.getMessage());
         }
     }
 }
