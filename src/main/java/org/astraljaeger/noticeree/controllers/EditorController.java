@@ -8,18 +8,20 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.astraljaeger.noticeree.datatools.data.Chatter;
 import org.astraljaeger.noticeree.datatools.data.Sound;
 
 import java.io.File;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.logging.Logger;
 
 public class EditorController {
 
-    private static final Logger logger = Logger.getLogger(EditorController.class.getSimpleName());
+    private static final Logger logger = LogManager.getLogger(EditorController.class);
 
+    // region FXML fields
     @FXML
     public Button lastUsedResetBtn;
 
@@ -56,6 +58,8 @@ public class EditorController {
     @FXML
     public TableColumn<Sound, String> fileCol;
 
+    // endregion
+
     private Stage primaryStage;
 
     @FXML
@@ -76,6 +80,11 @@ public class EditorController {
         welcomeMsgTb.textProperty().bindBidirectional(chatter.welcomeMessageProperty());
         lastUsedLbl.textProperty().bind(chatter.lastUsedProperty().asString());
 
+        bindTableView(chatter);
+        bindButtonEvents(chatter);
+    }
+
+    private void bindTableView(Chatter chatter){
         soundsTv.setItems(chatter.getSounds());
         soundsTv.setEditable(true);
 
@@ -87,7 +96,7 @@ public class EditorController {
                         .priorityProperty()
                         .setValue(Integer.parseInt(event.getNewValue()));
             }catch (NumberFormatException e){
-                logger.info("Invalid number format: " + e.getMessage());
+                logger.error("Invalid number format: {} {}", e.getClass().getSimpleName(), e.getMessage());
             }
         });
 
@@ -105,14 +114,15 @@ public class EditorController {
                 event.getRowValue()
                         .fileProperty()
                         .setValue(new File(event.getNewValue()));
-            }else {
-                logger.info("New file not valid");
-            }
+            }else
+                logger.error("New file does not exist");
         });
+    }
 
+    private void bindButtonEvents(Chatter chatter){
         lastUsedResetBtn.setOnAction(event -> {
             chatter.lastUsedProperty().setValue(LocalDateTime.of(2020, 1, 1, 0,0,0));
-            logger.fine("Resetting last used property");
+            logger.debug("Resetting last used property");
         });
 
         addSoundBtn.setOnAction(event -> {
@@ -127,18 +137,21 @@ public class EditorController {
                             (fileUri.contains("nsfw")),
                             (fileUri.endsWith(".mp3") ? null : f),
                             f));
-                }
-            }
+
+                    logger.debug("Added sound {}", fileUri);
+                };
+            }else
+                logger.error("Adding sound(s) failed");
+
         });
 
         removeSoundBtn.setOnAction(event -> {
             int toRemove = soundsTv.getSelectionModel().getSelectedIndex();
+            logger.debug("Removing sound: {}", soundsTv.getSelectionModel().getSelectedItem());
             if(toRemove >= 0){
                 chatter.soundsProperty().remove(toRemove);
             }
-            logger.fine("Removing sound");
         });
-
     }
 
 
