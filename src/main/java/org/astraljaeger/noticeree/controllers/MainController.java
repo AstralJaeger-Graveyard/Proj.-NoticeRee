@@ -132,7 +132,7 @@ public class MainController {
 
         logger.info("Setup tab change event");
         mainTp.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
-            logger.info("Changed tab from '%d' to '%2$d'",
+            logger.info("Changed tab from '{}' to '{}'",
                     mainTp.getTabs().indexOf(oldValue),
                     mainTp.getTabs().indexOf(newValue))
         );
@@ -141,7 +141,7 @@ public class MainController {
         addBtn.setOnAction(event -> {
             Chatter chatter = new Chatter("NewUser");
             openEditorWindow(chatter, "Add new user");
-            logger.info("Added chatter: %s", chatter);
+            logger.info("Added chatter: {}", chatter);
             dataStore.addChatter(chatter);
         });
 
@@ -151,7 +151,7 @@ public class MainController {
             if(selected != null){
                 String oldUsername = selected.getUsername();
                 openEditorWindow(selected, "Editing user " + oldUsername);
-                logger.info("Updating chatter: %s to %2$s", oldUsername, (!oldUsername.equals(selected.getUsername()) ? "" : " to " + selected.getUsername()));
+                logger.info("Updating chatter: {} to {}", oldUsername, (!oldUsername.equals(selected.getUsername()) ? "" : " to " + selected.getUsername()));
                 dataStore.updateChatter(oldUsername, selected);
             }
         });
@@ -368,7 +368,7 @@ public class MainController {
                 try {
                     desktop.browse(new URI(uri));
                 } catch (Exception e) {
-                    logger.info("Not able to open browser: %s", e.getMessage());
+                    logger.info("Not able to open browser: {}", e.getMessage());
                 }
             }
         }
