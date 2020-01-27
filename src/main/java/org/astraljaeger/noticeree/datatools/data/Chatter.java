@@ -1,25 +1,27 @@
 package org.astraljaeger.noticeree.datatools.data;
 
 import javafx.beans.property.*;
+import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
-import java.util.ArrayList;
+import java.time.LocalDateTime;
 import java.util.List;
 
-public class Chatter implements Cloneable{
+@SuppressWarnings("unused")
+public class Chatter{
     private final StringProperty username;
 
     private final StringProperty welcomeMessage;
 
-    private final ListProperty<String> sounds;
+    private final ListProperty<Sound> sounds;
 
-    private final LongProperty lastUsed;
+    private final ObjectProperty<LocalDateTime> lastUsed;
 
     public Chatter(){
         this.username = new SimpleStringProperty();
         this.welcomeMessage = new SimpleStringProperty();
-        this.sounds = new SimpleListProperty<>();
-        this.lastUsed = new SimpleLongProperty();
+        this.sounds = new SimpleListProperty<>(FXCollections.observableArrayList());
+        this.lastUsed = new SimpleObjectProperty<>(LocalDateTime.of(2020,1,1,0,0,0));
     }
 
     public Chatter(String username){
@@ -32,21 +34,14 @@ public class Chatter implements Cloneable{
         this.welcomeMessage.setValue(welcomeMessage);
     }
 
-    public Chatter(String username, String welcomeMessage, List<String> sounds){
+    public Chatter(String username, String welcomeMessage, List<Sound> sounds){
         this(username, welcomeMessage);
         this.sounds.addAll(sounds);
     }
 
-    public Chatter(String username, String welcomeMessage, List<String> sounds, long lastUsed){
+    public Chatter(String username, String welcomeMessage, List<Sound> sounds, LocalDateTime lastUsed){
         this(username, welcomeMessage, sounds);
         this.lastUsed.setValue(lastUsed);
-    }
-
-    public Chatter(Chatter other){
-        this(other.username.getValue(),
-                other.welcomeMessage.getValue(),
-                new ArrayList<String>(other.sounds),
-                other.lastUsed.getValue());
     }
 
     public String getUsername() {
@@ -69,22 +64,22 @@ public class Chatter implements Cloneable{
         return welcomeMessage;
     }
 
-    public ObservableList<String> getSounds() {
+    public ObservableList<Sound> getSounds() {
 
         return sounds.get();
     }
 
-    public ListProperty<String> soundsProperty() {
+    public ListProperty<Sound> soundsProperty() {
 
         return sounds;
     }
 
-    public long getLastUsed() {
+    public LocalDateTime getLastUsed() {
 
         return lastUsed.get();
     }
 
-    public LongProperty lastUsedProperty() {
+    public ObjectProperty<LocalDateTime> lastUsedProperty() {
 
         return lastUsed;
     }
