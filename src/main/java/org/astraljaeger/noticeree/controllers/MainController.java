@@ -304,7 +304,7 @@ public class MainController {
                 .map(Mixer::getMixerInfo)
                 .map(info -> "\t - " + info.getName() + " <> " + info.getDescription())
                 .collect(Collectors.joining("\n"));
-        logger.info("Found devices [%d]: %n %s", devices.length(), devices);
+        logger.info("Found devices [{}]: %n {}", devices.length(), devices);
         return results;
     }
 
