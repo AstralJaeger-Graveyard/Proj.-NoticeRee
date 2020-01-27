@@ -4,18 +4,20 @@
 
 package org.astraljaeger.noticeree.datatools;
 
-import com.google.gson.Gson;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import lombok.Getter;
 import org.astraljaeger.noticeree.Configuration;
 import org.astraljaeger.noticeree.datatools.data.Chatter;
+import org.astraljaeger.noticeree.datatools.data.Sound;
 import org.dizitart.no2.*;
-import org.dizitart.no2.event.ChangedItem;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.logging.Logger;
@@ -38,18 +40,22 @@ public class DataStore {
         return instance;
     }
 
-    private Gson serializer;
     private Nitrite db;
-    private NitriteCollection collection;
+    private NitriteCollection chatterCollection;
+    private NitriteCollection soundCollection;
 
     @Getter
     private ObservableList<Chatter> chattersList;
 
     private static final String USERNAME = "username";
     private static final String WELCOME_MESSAGE = "welcomeMessage";
-    private static final String SOUNDS_COUNT = "soundsCount";
-    private static final String SOUNDS = "sounds";
     private static final String LAST_USED = "lastUsed";
+
+    private static final String PRIORITY = "priority";
+    private static final String LABEL = "label";
+    private static final String NSFW = "nsfw";
+    private static final String FILE = "file";
+    private static final String ORIGINAL_FILE = "originalFile";
 
     private DataStore(){
         chattersList = FXCollections.observableArrayList();
@@ -57,54 +63,73 @@ public class DataStore {
         if(Configuration.USE_PERSISTANCE) {
             checkOrCreateFolder();
 
-            serializer = new Gson();
-
             db = Nitrite.builder()
                     .filePath(Configuration.getAppDataDirectory() + FILE_NAME)
                     .openOrCreate();
 
-            collection = db.getCollection(Chatter.class.getName());
+            chatterCollection = db.getCollection(Chatter.class.getName());
+            if(!isIndexed(chatterCollection))
+                chatterCollection.createIndex(USERNAME, indexOptions(IndexType.Fulltext));
 
-            if(!isIndexed(collection)){
-                collection.createIndex(USERNAME, indexOptions(IndexType.Fulltext));
-            }
+            soundCollection = db.getCollection(Sound.class.getName());
+            if(!isIndexed(soundCollection))
+                soundCollection.createIndex(USERNAME, indexOptions(IndexType.Fulltext));
 
-            collection.register(changeInfo -> logger.fine(changeInfo.getChangeType().name() + " element(s) " +
-                    changeInfo.getChangedItems()
-                            .stream()
-                            .map(ChangedItem::getDocument)
-                            .map(doc -> doc.get(USERNAME).toString())
-                            .collect(Collectors.joining(", "))));
             load();
         }
     }
 
+    /**
+     * This method adds a new chatter and corresponding sounds to the database
+     * @param chatter the chatter to be added
+     */
     public synchronized void addChatter(Chatter chatter){
         logger.info("Adding new chatter: " + chatter);
         if(Configuration.USE_PERSISTANCE){
-            Document doc = convertToDoc(chatter);
-            collection.insert(doc);
+            Document chatterDocument = chatter2Doc(chatter);
+            chatterCollection.insert(chatterDocument);
+            for(Sound s : chatter.getSounds()){
+                Document soundDocument = sound2Doc(s);
+                soundCollection.insert(soundDocument);
+            }
         }
 
         chattersList.add(chatter);
     }
 
+    /**
+     * This method removes a chatter and all to him bound sounds
+     * @param chatter the chatter to be removed
+     */
     public synchronized void removeChatter(Chatter chatter){
         logger.info("Removing chatter: " + chatter);
         if(Configuration.USE_PERSISTANCE){
-            collection.remove(eq(USERNAME, chatter.getUsername()));
+            chatterCollection.remove(eq(USERNAME, chatter.getUsername()));
+            soundCollection.remove(eq(USERNAME, chatter.getUsername()));
         }
         chattersList.remove(chatter);
     }
 
+    /**
+     * This method removes the chatter from the database and add a new chatter to it.
+     *
+     * @param oldUsername the username of the chatter before the change
+     * @param updated the updated object
+     */
     public synchronized void updateChatter(String oldUsername, Chatter updated){
         logger.info("Updading chatter from " + oldUsername + " to " + updated);
         if(Configuration.USE_PERSISTANCE){
-            collection.remove(eq(USERNAME, oldUsername));
-            collection.insert(convertToDoc(updated));
+            chatterCollection.remove(eq(USERNAME, oldUsername));
+            soundCollection.remove(eq(USERNAME, oldUsername));
+            chatterCollection.insert(chatter2Doc(updated));
+            for(Sound s : updated.getSounds())
+                soundCollection.insert(sound2Doc(s));
         }
     }
 
+    /**
+     * This method closes the connection to the database to ensure correct resource freeing
+     */
     public void close(){
         logger.info("Closing database connection");
         if(Configuration.USE_PERSISTANCE && !db.isClosed()){
@@ -130,21 +155,45 @@ public class DataStore {
     }
 
     private void load(){
-        Cursor results = collection.find(FindOptions.sort(USERNAME, SortOrder.Ascending));
-        for(Document doc : results){
-            String username = doc.get(USERNAME, String.class);
-            String message = doc.get(WELCOME_MESSAGE, String.class);
-            String[] sounds = doc.get(SOUNDS, String[].class);
-            Long lastUsed = doc.get(LAST_USED, Long.class);
-            chattersList.add(new Chatter(username, message, Arrays.asList(sounds), lastUsed));
+        for(Document chatterDoc : chatterCollection.find(FindOptions.sort(USERNAME, SortOrder.Ascending))){
+            Chatter chatter = fromChatterDocument(chatterDoc);
+            for(Document soundDoc : soundCollection.find(eq(USERNAME, chatter.getUsername()))){
+                chatter.getSounds().add(fromSoundDocument(soundDoc));
+            }
+            chattersList.add(chatter);
         }
     }
 
-    private Document convertToDoc(Chatter chatter){
+    private Document chatter2Doc(Chatter chatter){
         return createDocument(USERNAME, chatter.getUsername())
                 .put(WELCOME_MESSAGE, chatter.getWelcomeMessage())
-                .put(SOUNDS, chatter.getSounds().toArray(new String[0]))
                 .put(LAST_USED, chatter.getLastUsed());
+    }
+
+    private Document sound2Doc(Sound sound){
+        return createDocument(USERNAME, sound.getUsername())
+                .put(PRIORITY, sound.getPriority())
+                .put(LABEL, sound.getLabel())
+                .put(NSFW, sound.isNsfw())
+                .put(FILE, sound.getFile().toURI().toString())
+                .put(ORIGINAL_FILE, sound.getOriginalFile().toURI().toString());
+    }
+
+    private Sound fromSoundDocument(Document doc){
+        Integer priority = doc.get(PRIORITY, Integer.class);
+        String username = doc.get(USERNAME, String.class);
+        String label = doc.get(LABEL, String.class);
+        Boolean nsfw = doc.get(NSFW, Boolean.class);
+        File file = new File(doc.get(FILE, String.class));
+        File originalFile = new File(doc.get(ORIGINAL_FILE, String.class));
+        return new Sound(username, priority, label, nsfw, file, originalFile);
+    }
+
+    private Chatter fromChatterDocument(Document doc){
+        String username = doc.get(USERNAME, String.class);
+        String message = doc.get(WELCOME_MESSAGE, String.class);
+        LocalDateTime lastUsed = doc.get(LAST_USED, LocalDateTime.class);
+        return new Chatter(username, message, new ArrayList<>(), lastUsed);
     }
 
     private boolean isIndexed(NitriteCollection collection){
