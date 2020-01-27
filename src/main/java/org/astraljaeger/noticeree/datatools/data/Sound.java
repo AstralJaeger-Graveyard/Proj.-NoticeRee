@@ -3,17 +3,22 @@ package org.astraljaeger.noticeree.datatools.data;
 import javafx.beans.property.*;
 
 import java.io.File;
+import java.util.logging.Logger;
 
 @SuppressWarnings("unused")
 public class Sound {
 
+    private final static Logger logger = Logger.getLogger(Sound.class.getSimpleName());
+
+    private final String username;
     private final IntegerProperty priority;
     private final StringProperty label;
     private final BooleanProperty nsfw;
     private final ObjectProperty<File> file;
     private final ObjectProperty<File> originalFile;
 
-    public Sound(){
+    public Sound(String username){
+        this.username = username;
         priority = new SimpleIntegerProperty();
         label = new SimpleStringProperty();
         nsfw = new SimpleBooleanProperty(false);
@@ -21,29 +26,35 @@ public class Sound {
         originalFile = new SimpleObjectProperty<>();
     }
 
-    public Sound(int priority){
-        this();
+    public Sound(String username, int priority){
+        this(username);
         this.priority.setValue(priority);
     }
 
-    public Sound(int priority, String label){
-        this(priority);
+    public Sound(String username, int priority, String label){
+        this(username, priority);
         this.label.setValue(label);
     }
 
-    public Sound(int priority, String label, boolean nsfw){
-        this(priority, label);
+    public Sound(String username, int priority, String label, boolean nsfw){
+        this(username, priority, label);
         this.nsfw.setValue(nsfw);
     }
 
-    public Sound(int priority, String label, boolean nsfw, File file){
-        this(priority, label, nsfw);
-        this.file.setValue(file);
+    public Sound(String username, int priority, String label, boolean nsfw, File file, File originalFile){
+        this(username, priority, label, nsfw);
+        this.originalFile.setValue(originalFile);
+        if(file != null){
+            this.file.setValue(file);
+        }else {
+            // Convert mp3 to wav and store next to mp3
+            // TODO: implement this https://stackoverflow.com/questions/14085199/mp3-to-wav-conversion-in-java
+        }
     }
 
-    public Sound(int priority, String label, boolean nsfw, File file, File originalFile){
-        this(priority, label, nsfw, file);
-        this.originalFile.setValue(originalFile);
+    public String getUsername() {
+
+        return username;
     }
 
     public int getPriority() {
@@ -122,7 +133,7 @@ public class Sound {
     }
 
     public boolean hasLabel(){
-        return label.get().equals("");
+        return !label.get().equals("");
     }
 
     @Override
