@@ -28,6 +28,7 @@ hs_err_pid*
 /.gradle
 /gradle
 /build
+/out
 
 # contains sonar token
 gradle.properties
