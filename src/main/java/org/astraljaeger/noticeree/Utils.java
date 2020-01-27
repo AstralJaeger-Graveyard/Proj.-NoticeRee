@@ -25,6 +25,10 @@ import java.net.URI;
 
 public class Utils {
 
+    private Utils(){
+
+    }
+
     public static Dialog<Pair<String, Boolean>> createLoginDialog(String errorMessage){
 
         Dialog<Pair<String, Boolean>> dialog = new Dialog<>();

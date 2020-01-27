@@ -67,7 +67,7 @@ public class ConfigStore {
                 Files.createDirectories(Paths.get(Configuration.getAppConfigDirectory()));
 
             if(!Files.exists(configFile)){
-                logger.debug("Creating config file at: {}", configFile.toString());
+                logger.debug("Creating config file at: {}", configFile);
                 config = new HashMap<>();
                 config.put(TOKEN_KEY, "");
                 config.put(CHANNEL_KEY, "");

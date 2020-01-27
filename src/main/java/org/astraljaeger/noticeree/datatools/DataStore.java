@@ -186,9 +186,8 @@ public class DataStore {
         String username = doc.get(USERNAME, String.class);
         String label = doc.get(LABEL, String.class);
         Boolean nsfw = doc.get(NSFW, Boolean.class);
-        File file = new File(doc.get(FILE, String.class));
         File originalFile = new File(doc.get(ORIGINAL_FILE, String.class));
-        return new Sound(username, priority, label, nsfw, file, originalFile);
+        return new Sound(username, priority, label, nsfw, originalFile);
     }
 
     private Chatter fromChatterDocument(Document doc){

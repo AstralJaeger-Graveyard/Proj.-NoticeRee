@@ -135,11 +135,10 @@ public class EditorController {
                             chatter.soundsProperty().size(),
                             fileUri.substring(fileUri.lastIndexOf('/')),
                             (fileUri.contains("nsfw")),
-                            (fileUri.endsWith(".mp3") ? null : f),
                             f));
 
                     logger.debug("Added sound {}", fileUri);
-                };
+                }
             }else
                 logger.error("Adding sound(s) failed");
 
