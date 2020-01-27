@@ -1,14 +1,15 @@
 package org.astraljaeger.noticeree.datatools.data;
 
 import javafx.beans.property.*;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
-import java.util.logging.Logger;
 
 @SuppressWarnings("unused")
 public class Sound {
 
-    private final static Logger logger = Logger.getLogger(Sound.class.getSimpleName());
+    private static final Logger logger = LogManager.getLogger(Sound.class);
 
     private final String username;
     private final IntegerProperty priority;
@@ -41,14 +42,19 @@ public class Sound {
         this.nsfw.setValue(nsfw);
     }
 
-    public Sound(String username, int priority, String label, boolean nsfw, File file, File originalFile){
+    public Sound(String username, int priority, String label, boolean nsfw, File originalFile){
         this(username, priority, label, nsfw);
+        logger.debug("Initializing sound with original file");
         this.originalFile.setValue(originalFile);
-        if(file != null){
-            this.file.setValue(file);
+        if(originalFile.getName().endsWith(".wav")){
+            this.originalFile.setValue(originalFile);
+            this.file.setValue(originalFile);
         }else {
             // Convert mp3 to wav and store next to mp3
             // TODO: implement this https://stackoverflow.com/questions/14085199/mp3-to-wav-conversion-in-java
+            this.originalFile.setValue(originalFile);
+            logger.debug("Converting mp3 file to wav: {}", originalFile.getName());
+
         }
     }
 
