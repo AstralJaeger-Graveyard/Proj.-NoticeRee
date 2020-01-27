@@ -20,6 +20,8 @@ import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.astraljaeger.noticeree.Utils;
 import org.astraljaeger.noticeree.datatools.ConfigStore;
 import org.astraljaeger.noticeree.datatools.DataStore;
@@ -34,8 +36,6 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 import java.util.Optional;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static java.awt.Desktop.*;
@@ -43,10 +43,9 @@ import static java.awt.Desktop.*;
 @SuppressWarnings({"unused"})
 public class MainController {
 
-    private final Logger logger = Logger.getLogger(MainController.class.getSimpleName());
+    private static final Logger logger = LogManager.getLogger(MainController.class);
 
     // region FXML Fields
-
     @FXML
     public TabPane mainTp;
 
@@ -94,7 +93,6 @@ public class MainController {
 
     @FXML
     public TextField channelTf;
-
     // endregion
 
     Stage primaryStage;
@@ -109,20 +107,19 @@ public class MainController {
 
     @FXML
     public void initialize(){
-        logger.setLevel(Level.ALL);
-        logger.fine("Starting login process");
+        logger.info("Starting login process");
         client = doLogin();
 
-        logger.fine("Setting up UI, restoring old config");
+        logger.info("Setting up UI, restoring old config");
         setUiFromConfig();
 
-        logger.fine("Inizialising database manager");
+        logger.info("Inizialising database manager");
         dataStore = DataStore.getInstance();
 
-        logger.fine("Binding data");
+        logger.info("Binding data");
         setupTableView();
 
-        logger.fine("Setup program exit event");
+        logger.info("Setup program exit event");
         if(primaryStage != null){
             primaryStage.onCloseRequestProperty().addListener(((observable, oldValue, newValue) -> {
                 // TODO: Close db and FIND THE FUCK OUT WHY THIS DOES NOT TERMINATE!
@@ -133,38 +130,38 @@ public class MainController {
             }));
         }
 
-        logger.fine("Setup tab change event");
+        logger.info("Setup tab change event");
         mainTp.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
-            logger.info(String.format("Changed tab from '%d' to '%d'",
+            logger.info("Changed tab from '%d' to '%2$d'",
                     mainTp.getTabs().indexOf(oldValue),
-                    mainTp.getTabs().indexOf(newValue)))
+                    mainTp.getTabs().indexOf(newValue))
         );
 
-        logger.fine("Setup add sound event");
+        logger.info("Setup add sound event");
         addBtn.setOnAction(event -> {
-            Chatter chatter = new Chatter("New User");
-            openEditorWindow(chatter, "Adding new user");
-            logger.info("Added chatter: " + chatter);
+            Chatter chatter = new Chatter("NewUser");
+            openEditorWindow(chatter, "Add new user");
+            logger.info("Added chatter: %s", chatter);
             dataStore.addChatter(chatter);
         });
 
-        logger.fine("Setup edit sound event");
+        logger.info("Setup edit sound event");
         editBtn.setOnAction(event -> {
             Chatter selected = chattersTv.getSelectionModel().getSelectedItem();
             if(selected != null){
                 String oldUsername = selected.getUsername();
                 openEditorWindow(selected, "Editing user " + oldUsername);
-                logger.info("Updating chatter: " + oldUsername  + (!oldUsername.equals(selected.getUsername()) ? "" : " to " + selected.getUsername()));
+                logger.info("Updating chatter: %s to %2$s", oldUsername, (!oldUsername.equals(selected.getUsername()) ? "" : " to " + selected.getUsername()));
                 dataStore.updateChatter(oldUsername, selected);
             }
         });
 
-        logger.fine("Setup remove sound event");
+        logger.info("Setup remove sound event");
         removeBtn.setOnAction(event -> {
             // might wanna add a safety dialog here
             Chatter toRemove = chattersTv.getSelectionModel().getSelectedItem();
             if(toRemove != null){
-                logger.info("Removing chatter: " + toRemove);
+                logger.info("Removing chatter: %s", toRemove);
                 dataStore.removeChatter(toRemove);
             }
         });
@@ -222,7 +219,7 @@ public class MainController {
             }
         }
 
-       logger.info("Welcome " + result.getUserName());
+       logger.info("Welcome %s", result.getUserName());
         configStore.setUsername(result.getUserName());
 
         return TwitchClientBuilder.builder()
@@ -246,7 +243,7 @@ public class MainController {
 
         channelTf.setText(configStore.getChannel());
         channelTf.textProperty().addListener(((observable, oldValue, newValue) -> {
-            logger.fine("Setting channel name to " + newValue);
+            logger.info("Setting channel name to %s", newValue);
             channelTf.setText(newValue);
             configStore.setChannel(newValue);
         }));
@@ -278,13 +275,13 @@ public class MainController {
             if(configuredMixer != null) {
                 int index = findMixerInfo(audioOutputCb.getItems(), configuredMixer);
                 if (index != -1) {
-                    logger.info(String.format("Found stored playback device: [%d] %s", index, configuredMixer));
+                    logger.info("Found stored playback device: [%d] %s", index, configuredMixer);
                     audioOutputCb.getSelectionModel().select(index);
                 }
             }
             else {
                 // TODO: Consider giving a window to tell the user to configure a playback device
-                logger.info("No playback device set, defaulting to 1st found device: " + ((Mixer)audioOutputCb.getItems().get(0)).getMixerInfo().getName());
+                logger.info("No playback device set, defaulting to 1st found device: %s", ((Mixer)audioOutputCb.getItems().get(0)).getMixerInfo().getName());
                 audioOutputCb.getSelectionModel().select(0);
             }
         }
@@ -307,7 +304,7 @@ public class MainController {
                 .map(Mixer::getMixerInfo)
                 .map(info -> "\t - " + info.getName() + " <> " + info.getDescription())
                 .collect(Collectors.joining("\n"));
-        logger.info("Found devices [" + results.size() + "]: \n" + devices);
+        logger.info("Found devices [%d]: %n %s", devices.length(), devices);
         return results;
     }
 
@@ -343,7 +340,7 @@ public class MainController {
     }
 
     private void playTestSound(MixerHelper mixerInfo){
-        logger.fine("Playing test sound on " + mixerInfo);
+        logger.info("Playing test sound on %s", mixerInfo);
         // TODO: play sound on selected mixer
 
     }
@@ -371,7 +368,7 @@ public class MainController {
                 try {
                     desktop.browse(new URI(uri));
                 } catch (Exception e) {
-                    logger.info("Not able to open browser: " + e.getMessage());
+                    logger.info("Not able to open browser: %s", e.getMessage());
                 }
             }
         }
@@ -392,7 +389,7 @@ public class MainController {
             popupStage.setTitle(title);
             popupStage.showAndWait();
         }catch (IOException e){
-            logger.info("Error opening editor window:\n " + e.getClass().getSimpleName()+ ": " + e.getMessage());
+            logger.info("Error opening editor window:%n %s: %2$s", e.getClass().getSimpleName(), e.getMessage());
         }
     }
 }
