@@ -108,7 +108,7 @@ public class MainController {
     @FXML
     public void initialize(){
         logger.info("Starting login process");
-        client = doLogin();
+        //client = doLogin();
 
         logger.info("Setting up UI, restoring old config");
         setUiFromConfig();
@@ -122,7 +122,7 @@ public class MainController {
         logger.info("Setup program exit event");
         if(primaryStage != null){
             primaryStage.onCloseRequestProperty().addListener(((observable, oldValue, newValue) -> {
-                // TODO: Close db and FIND THE FUCK OUT WHY THIS DOES NOT TERMINATE!
+                // TODO: Close db and FIND THE FUCK OUT WHY THIS $h1t DOES NOT TERMINATE!
                 logger.info("Terminating application");
                 client.getChat().disconnect();
                 store.close();
