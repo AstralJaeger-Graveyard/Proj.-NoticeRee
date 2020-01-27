@@ -3,15 +3,16 @@ package org.astraljaeger.noticeree.controllers;
 
 import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ListView;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import org.astraljaeger.noticeree.datatools.data.Chatter;
+import org.astraljaeger.noticeree.datatools.data.Sound;
 
 import java.io.File;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -29,6 +30,12 @@ public class EditorController {
     public Button removeSoundBtn;
 
     @FXML
+    public Button priorityUpBtn;
+
+    @FXML
+    public Button priorityDownBtn;
+
+    @FXML
     public Label lastUsedLbl;
 
     @FXML
@@ -38,13 +45,22 @@ public class EditorController {
     public TextField welcomeMsgTb;
 
     @FXML
-    public ListView<String> soundsLv;
+    public TableView<Sound> soundsTv;
+
+    @FXML
+    public TableColumn<Sound, String> priorityCol;
+
+    @FXML
+    public TableColumn<Sound, String> labelCol;
+
+    @FXML
+    public TableColumn<Sound, String> fileCol;
 
     private Stage primaryStage;
 
     @FXML
     public void initialize(){
-        soundsLv.setPlaceholder(new Label("Such empty, much wow!"));
+        soundsTv.setPlaceholder(new Label("Such empty, much wow!"));
     }
 
     void setPrimaryStage(Stage stage){
@@ -59,34 +75,64 @@ public class EditorController {
         usernameTb.textProperty().bindBidirectional(chatter.usernameProperty());
         welcomeMsgTb.textProperty().bindBidirectional(chatter.welcomeMessageProperty());
         lastUsedLbl.textProperty().bind(chatter.lastUsedProperty().asString());
-        soundsLv.setItems(chatter.getSounds());
+
+        soundsTv.setItems(chatter.getSounds());
+        soundsTv.setEditable(true);
+
+        priorityCol.setCellValueFactory(cellData -> cellData.getValue().priorityProperty().asString());
+        priorityCol.setCellFactory(TextFieldTableCell.forTableColumn());
+        priorityCol.setOnEditCommit((TableColumn.CellEditEvent<Sound, String> event) -> {
+            try {
+                event.getRowValue()
+                        .priorityProperty()
+                        .setValue(Integer.parseInt(event.getNewValue()));
+            }catch (NumberFormatException e){
+                logger.info("Invalid number format: " + e.getMessage());
+            }
+        });
+
+        labelCol.setCellValueFactory(new PropertyValueFactory<>("label"));
+        labelCol.setCellFactory(TextFieldTableCell.forTableColumn());
+        labelCol.setOnEditCommit((TableColumn.CellEditEvent<Sound, String> event) -> event.getRowValue()
+                .labelProperty()
+                .set(event.getNewValue()));
+
+        fileCol.setCellValueFactory(cellData -> cellData.getValue().fileProperty().asString());
+        fileCol.setCellFactory(TextFieldTableCell.forTableColumn());
+        fileCol.setOnEditCommit((TableColumn.CellEditEvent<Sound, String> event) -> {
+            File newFile = new File(event.getNewValue());
+            if(newFile.exists()) {
+                event.getRowValue()
+                        .fileProperty()
+                        .setValue(new File(event.getNewValue()));
+            }else {
+                logger.info("New file not valid");
+            }
+        });
 
         lastUsedResetBtn.setOnAction(event -> {
-            chatter.lastUsedProperty().setValue(0);
+            chatter.lastUsedProperty().setValue(LocalDateTime.of(2020, 1, 1, 0,0,0));
             logger.fine("Resetting last used property");
         });
 
         addSoundBtn.setOnAction(event -> {
             List<File> files = createChooser().showOpenMultipleDialog(primaryStage.getOwner());
-            if(!files.isEmpty()){
+            if(files != null && !files.isEmpty()){
                 for(File f : files){
                     String fileUri = f.getAbsoluteFile().toURI().toString();
-                    if(fileUri.endsWith(".mp3")){
-                        // TODO: convert file
-                        fileUri = fileUri.replace(".mp3", "_autoconverted.wav");
-                        chatter.soundsProperty().add(fileUri);
-                        logger.fine("Adding new converted sound: " + fileUri);
-                    }else {
-
-                        chatter.soundsProperty().add(fileUri);
-                        logger.fine("Adding new sound: " + fileUri);
-                    }
+                    chatter.soundsProperty().add(new Sound(
+                            chatter.getUsername(),
+                            chatter.soundsProperty().size(),
+                            fileUri.substring(fileUri.lastIndexOf('/')),
+                            (fileUri.contains("nsfw")),
+                            (fileUri.endsWith(".mp3") ? null : f),
+                            f));
                 }
             }
         });
 
         removeSoundBtn.setOnAction(event -> {
-            int toRemove = soundsLv.getSelectionModel().getSelectedIndex();
+            int toRemove = soundsTv.getSelectionModel().getSelectedIndex();
             if(toRemove >= 0){
                 chatter.soundsProperty().remove(toRemove);
             }
