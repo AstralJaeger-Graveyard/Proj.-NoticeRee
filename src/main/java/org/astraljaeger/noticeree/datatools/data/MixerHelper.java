@@ -29,10 +29,4 @@ public class MixerHelper {
     public String toString(){
         return String.format("%s", name);
     }
-
-    @Override
-    public boolean equals(Object obj) {
-
-        return super.equals(obj);
-    }
 }
