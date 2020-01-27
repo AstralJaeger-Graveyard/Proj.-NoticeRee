@@ -7,6 +7,8 @@ package org.astraljaeger.noticeree.datatools;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import lombok.Getter;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.astraljaeger.noticeree.Configuration;
 import org.astraljaeger.noticeree.datatools.data.Chatter;
 import org.astraljaeger.noticeree.datatools.data.Sound;
@@ -20,7 +22,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static org.dizitart.no2.Document.createDocument;
@@ -29,7 +30,7 @@ import static org.dizitart.no2.filters.Filters.eq;
 
 public class DataStore {
 
-    private static final Logger logger = Logger.getLogger(DataStore.class.getSimpleName());
+    private static final Logger logger = LogManager.getLogger(DataStore.class);
     private static final String FILE_NAME = "data.db";
 
     private static DataStore instance;
@@ -84,7 +85,7 @@ public class DataStore {
      * @param chatter the chatter to be added
      */
     public synchronized void addChatter(Chatter chatter){
-        logger.info("Adding new chatter: " + chatter);
+        logger.info("Adding new chatter: {}", chatter);
         if(Configuration.USE_PERSISTANCE){
             Document chatterDocument = chatter2Doc(chatter);
             chatterCollection.insert(chatterDocument);
@@ -102,7 +103,7 @@ public class DataStore {
      * @param chatter the chatter to be removed
      */
     public synchronized void removeChatter(Chatter chatter){
-        logger.info("Removing chatter: " + chatter);
+        logger.info("Removing chatter: {}", chatter);
         if(Configuration.USE_PERSISTANCE){
             chatterCollection.remove(eq(USERNAME, chatter.getUsername()));
             soundCollection.remove(eq(USERNAME, chatter.getUsername()));
@@ -117,7 +118,7 @@ public class DataStore {
      * @param updated the updated object
      */
     public synchronized void updateChatter(String oldUsername, Chatter updated){
-        logger.info("Updading chatter from " + oldUsername + " to " + updated);
+        logger.info("Updating chatter from {} to {}", oldUsername, updated.getUsername());
         if(Configuration.USE_PERSISTANCE){
             chatterCollection.remove(eq(USERNAME, oldUsername));
             soundCollection.remove(eq(USERNAME, oldUsername));
@@ -142,7 +143,7 @@ public class DataStore {
             try {
                 Files.createDirectory(Paths.get(Configuration.getAppDataDirectory()));
             } catch (IOException e) {
-                logger.info("An error occurred while creating the data directory: " +
+                logger.info("An error occurred while creating the data directory: {}",
                         Arrays.stream(e.getStackTrace())
                                 .map(trace -> String.format(" at %s#%s(%s:%d)",
                                         trace.getClass().getName(),
@@ -155,6 +156,7 @@ public class DataStore {
     }
 
     private void load(){
+        logger.debug("Trying to load stored data");
         for(Document chatterDoc : chatterCollection.find(FindOptions.sort(USERNAME, SortOrder.Ascending))){
             Chatter chatter = fromChatterDocument(chatterDoc);
             for(Document soundDoc : soundCollection.find(eq(USERNAME, chatter.getUsername()))){
@@ -184,9 +186,8 @@ public class DataStore {
         String username = doc.get(USERNAME, String.class);
         String label = doc.get(LABEL, String.class);
         Boolean nsfw = doc.get(NSFW, Boolean.class);
-        File file = new File(doc.get(FILE, String.class));
         File originalFile = new File(doc.get(ORIGINAL_FILE, String.class));
-        return new Sound(username, priority, label, nsfw, file, originalFile);
+        return new Sound(username, priority, label, nsfw, originalFile);
     }
 
     private Chatter fromChatterDocument(Document doc){

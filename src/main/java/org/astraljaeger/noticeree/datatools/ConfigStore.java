@@ -5,6 +5,8 @@
 package org.astraljaeger.noticeree.datatools;
 
 import com.google.gson.Gson;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.astraljaeger.noticeree.Configuration;
 import org.astraljaeger.noticeree.Utils;
 import org.jasypt.util.text.StrongTextEncryptor;
@@ -23,14 +25,14 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.logging.Logger;
+import java.util.Map;
 
 import static org.apache.commons.io.FileUtils.readFileToByteArray;
 import static org.apache.commons.io.FileUtils.writeStringToFile;
 
 public class ConfigStore {
 
-    private static final Logger logger = Logger.getLogger(ConfigStore.class.getSimpleName());
+    private static final Logger logger = LogManager.getLogger(ConfigStore.class);
     private static ConfigStore instance;
 
     public static ConfigStore getInstance(){
@@ -51,6 +53,8 @@ public class ConfigStore {
     private static final String CHANNEL_KEY = "channel";
     private static final String DEFAULT_OUTPUT_DEVICE = "default_output_device";
 
+    private static final String TOKEN_PLACEHOLDER = "*";
+
     private ConfigStore(){
         serializer = new Gson();
 
@@ -63,7 +67,7 @@ public class ConfigStore {
                 Files.createDirectories(Paths.get(Configuration.getAppConfigDirectory()));
 
             if(!Files.exists(configFile)){
-                System.out.println("Creating config file at: " + configFile.toString());
+                logger.debug("Creating config file at: {}", configFile);
                 config = new HashMap<>();
                 config.put(TOKEN_KEY, "");
                 config.put(CHANNEL_KEY, "");
@@ -80,23 +84,23 @@ public class ConfigStore {
         }
     }
 
-    public HashMap<String, String> getConfigItem(){
+    public Map<String, String> getConfigItem(){
         return config;
     }
 
     public void setToken(String token){
-        logger.info("Storing new token: " + "*".repeat(token.length()));
+        logger.info("Storing new token: {}", TOKEN_PLACEHOLDER.repeat(token.length()));
         config.put(TOKEN_KEY, token);
         saveConfig();
     }
 
     public String getToken(){
-        logger.fine("Revealing token: " + "*".repeat(config.get(TOKEN_KEY).length()));
+        logger.info("Revealing token: {}", TOKEN_PLACEHOLDER.repeat(config.get(TOKEN_KEY).length()));
         return config.get(TOKEN_KEY);
     }
 
     public void setUsername(String username){
-        logger.info("Storing new username: " + username);
+        logger.debug("Storing new username: {}", username);
         config.put(USERNAME_KEY, username);
         saveConfig();
     }
@@ -106,21 +110,20 @@ public class ConfigStore {
     }
 
     public void setChannel(String channel){
-        logger.info("Storing new channel: " + channel);
+        logger.debug("Storing new channel: {}", channel);
         config.put(CHANNEL_KEY, channel);
         saveConfig();
     }
 
     public String getChannel(){
         String channel = config.get(CHANNEL_KEY);
-        logger.fine("Revealing channel name: " + channel);
+        logger.debug("Revealing channel name: {}", channel);
         return channel;
     }
 
     public void setDefaultOutputDevice(Mixer.Info device){
-        logger.info("Storing new default playback device: " + device.getName());
+        logger.debug("Storing new default playback device: {}", device.getName());
         String serialized = serializer.toJson(device);
-        logger.fine("Serialized: " + serialized);
         config.put(DEFAULT_OUTPUT_DEVICE, serialized);
         saveConfig();
     }
@@ -131,7 +134,7 @@ public class ConfigStore {
             return null;
         }
         Mixer.Info info = serializer.fromJson(serialized, Mixer.Info.class);
-        logger.fine("Revealing stored playback device: " + info.getName());
+        logger.debug("Revealing stored playback device: {}", info.getName());
         return info;
     }
 
@@ -159,7 +162,7 @@ public class ConfigStore {
                         return macToString(nic.getHardwareAddress());
             }
         } catch (SocketException e) {
-            e.printStackTrace();
+            logger.error("Error retrieving MAC address", e);
         }
 
         RuntimeMXBean rmx = ManagementFactory.getRuntimeMXBean();
@@ -168,7 +171,7 @@ public class ConfigStore {
         if (parts.length > 0) {
             String name = parts[1];
             if (name != null && !name.isEmpty()) {
-                System.out.println("Name: " + name);
+                logger.debug("Using name: {}", name);
                 return name;
             }
         }

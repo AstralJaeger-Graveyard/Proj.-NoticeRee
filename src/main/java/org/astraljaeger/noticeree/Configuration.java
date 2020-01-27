@@ -17,6 +17,10 @@ public class Configuration {
 
     private static String workingDirectory = "";
 
+    private Configuration(){
+
+    }
+
     public static String getAppWorkingDirectory(){
         if(!workingDirectory.equals(""))
             return workingDirectory;
