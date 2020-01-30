@@ -24,6 +24,7 @@ import java.awt.*;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URI;
+import java.util.concurrent.TimeUnit;
 
 import static java.awt.Desktop.getDesktop;
 import static java.awt.Desktop.isDesktopSupported;
@@ -126,6 +127,19 @@ public class Utils {
                     logger.error("Not able to open uri {} browser: \n{}: {}", uri, e.getClass().getSimpleName(), e.getMessage());
                 }
             }
+        }
+    }
+
+    /**
+     * Method attempts to wait for specified time. Will continue normal procedures if interrupted
+     * @param time amount to wait
+     * @param unit timeunit to wait
+     */
+    public static void tryToWait(long time, TimeUnit unit){
+        try {
+            Thread.sleep(unit.toMillis(time));
+        }catch (Exception ignored){
+            logger.debug("Got interruped");
         }
     }
 }

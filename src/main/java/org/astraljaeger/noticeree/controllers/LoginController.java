@@ -1,16 +1,16 @@
 package org.astraljaeger.noticeree.controllers;
 
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.Hyperlink;
-import javafx.scene.control.PasswordField;
+import javafx.scene.control.*;
 import javafx.stage.Stage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.astraljaeger.noticeree.Utils;
 import org.astraljaeger.noticeree.datatools.data.LoginHelper;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 public class LoginController {
@@ -25,12 +25,23 @@ public class LoginController {
     private PasswordField tokenBox;
     @FXML
     private Hyperlink getTokenLink;
+    @FXML
+    private ProgressIndicator loginIndicator;
+
+    private ExecutorService executorService;
 
     private final Pattern pattern = Pattern.compile("^(oauth:)([a-z\\d]{30})");
     private Stage stage;
 
+    public LoginController(){
+        executorService = Executors.newSingleThreadExecutor();
+    }
+
     @FXML
     public void initialize(){
+        loginIndicator.managedProperty().bind(loginIndicator.visibleProperty());
+        loginIndicator.setManaged(false);
+
         logger.info("Initializing LoginWindow");
         loginBtn.setDisable(true);
         getTokenLink.setOnAction(event -> Utils.openUriInBrowser("https://twitchapps.com/tmi/"));
@@ -38,6 +49,14 @@ public class LoginController {
             logger.info("Handing control back to caller");
             stage.close();
         });
+    }
+
+    public void close() {
+        executorService.shutdown();
+        while (!executorService.isShutdown()){
+            Utils.tryToWait(10, TimeUnit.MILLISECONDS);
+        }
+        stage.close();
     }
 
     public void bind(LoginHelper helper){
@@ -54,6 +73,10 @@ public class LoginController {
                 loginBtn.setDisable(true);
             }
         });
+    }
+
+    private void probeLogin(LoginHelper helper){
+
     }
 
     public void setStage(Stage stage){

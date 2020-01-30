@@ -1,6 +1,9 @@
 package org.astraljaeger.noticeree.controllers;
 
+import com.github.philippheuer.credentialmanager.CredentialManager;
+import com.github.philippheuer.credentialmanager.CredentialManagerBuilder;
 import com.github.twitch4j.TwitchClient;
+import com.github.twitch4j.auth.providers.TwitchIdentityProvider;
 import com.google.common.collect.Lists;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -93,10 +96,16 @@ public class MainController {
     DataStore dataStore;
     MixerHelper device;
     LoginController loginController;
+    CredentialManager credentialManager;
+    TwitchIdentityProvider twitchIdentityProvider;
+
 
 
     public MainController(){
-
+        credentialManager = CredentialManagerBuilder.builder()
+                .build();
+        twitchIdentityProvider = new TwitchIdentityProvider(CLIENT_ID, "", "");
+        credentialManager.registerIdentityProvider(twitchIdentityProvider);
     }
 
     @FXML
@@ -126,18 +135,10 @@ public class MainController {
 
     private TwitchClient doLogin() {
 
-        boolean isValid = false;
-        do {
-            Optional<LoginHelper> helperOptional = openLoginWindow();
-            if (helperOptional.isPresent()) {
-                // validate token
-                isValid = validateToken(helperOptional.get().getToken());
-                // TODO
-            } else {
-                logger.fatal("We need a token to proceed.");
-                terminate(1);
-            }
-        }while (!isValid);
+        // Create credential manager, provider and register provider
+
+
+
 
         return null;
     }
@@ -340,7 +341,7 @@ public class MainController {
         Optional<LoginHelper> optional = Optional.empty();
 
         try {
-            final LoginHelper helper = new LoginHelper();
+            final LoginHelper helper = new LoginHelper(credentialManager, twitchIdentityProvider.getProviderName());
             final FXMLLoader loader = new FXMLLoader(getClass().getResource("/LoginWindow.fxml"));
             final Parent root = loader.load();
             final LoginController controller = loader.getController();
@@ -363,12 +364,6 @@ public class MainController {
         return optional;
     }
 
-    private boolean validateToken(String token){
-
-
-        return false;
-    }
-
     private void terminate(int code){
         if(code != 0){
             System.exit(code);
@@ -379,7 +374,13 @@ public class MainController {
         logger.info("Disconnected chat");
         dataStore.close();
         logger.info("Disconnect datasource");
+        shutdownExecutorService();
         Platform.exit();
+    }
+
+    private void shutdownExecutorService(){
+        // TODO: For now now executor is used, but one might be used
+        logger.info("executor service is shutdown");
     }
 
     // endregion
