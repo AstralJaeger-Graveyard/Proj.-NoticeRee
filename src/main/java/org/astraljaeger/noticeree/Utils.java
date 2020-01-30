@@ -17,13 +17,20 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
 import javafx.scene.paint.Color;
 import javafx.util.Pair;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.awt.*;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URI;
 
+import static java.awt.Desktop.getDesktop;
+import static java.awt.Desktop.isDesktopSupported;
+
 public class Utils {
+
+    private static final Logger logger = LogManager.getLogger(Utils.class);
 
     private Utils(){
 
@@ -107,5 +114,18 @@ public class Utils {
         pane.add(exceptionText, 0, 1);
         errorAlert.getDialogPane().setExpandableContent(pane);
         return errorAlert;
+    }
+
+    public static void openUriInBrowser(String uri){
+        if (isDesktopSupported()) {
+            var desktop = getDesktop();
+            if(desktop.isSupported(Desktop.Action.BROWSE)){
+                try {
+                    desktop.browse(new URI(uri));
+                } catch (Exception e) {
+                    logger.error("Not able to open uri {} browser: \n{}: {}", uri, e.getClass().getSimpleName(), e.getMessage());
+                }
+            }
+        }
     }
 }
