@@ -1,12 +1,6 @@
 package org.astraljaeger.noticeree.controllers;
 
-import com.github.philippheuer.credentialmanager.CredentialManager;
-import com.github.philippheuer.credentialmanager.CredentialManagerBuilder;
-import com.github.philippheuer.credentialmanager.domain.OAuth2Credential;
-import com.github.philippheuer.credentialmanager.storage.TemporaryStorageBackend;
 import com.github.twitch4j.TwitchClient;
-import com.github.twitch4j.TwitchClientBuilder;
-import com.github.twitch4j.auth.providers.TwitchIdentityProvider;
 import com.google.common.collect.Lists;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -19,13 +13,13 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import javafx.util.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.astraljaeger.noticeree.Utils;
 import org.astraljaeger.noticeree.datatools.ConfigStore;
 import org.astraljaeger.noticeree.datatools.DataStore;
 import org.astraljaeger.noticeree.datatools.data.Chatter;
+import org.astraljaeger.noticeree.datatools.data.LoginHelper;
 import org.astraljaeger.noticeree.datatools.data.MixerHelper;
 
 import javax.sound.sampled.AudioSystem;
@@ -33,17 +27,16 @@ import javax.sound.sampled.Line;
 import javax.sound.sampled.Mixer;
 import javax.sound.sampled.SourceDataLine;
 import java.io.IOException;
-import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-import static java.awt.Desktop.*;
 
 @SuppressWarnings({"unused"})
 public class MainController {
 
     private static final Logger logger = LogManager.getLogger(MainController.class);
+    private static final String CLIENT_ID = "i76h7g9dys23tnsp4q5qbc9vezpwfb";
+    private static final String BASE_URI = "https://www.twitch.tv/";
 
     // region FXML Fields
     @FXML
@@ -96,139 +89,57 @@ public class MainController {
     // endregion
 
     Stage primaryStage;
-    DataStore store;
     TwitchClient client;
-
     DataStore dataStore;
-
     MixerHelper device;
+    LoginController loginController;
 
-    private static final String CLIENT_ID = "i76h7g9dys23tnsp4q5qbc9vezpwfb";
 
-    @FXML
-    public void initialize(){
-        logger.info("Starting login process");
-        //client = doLogin();
-
-        logger.info("Setting up UI, restoring old config");
-        setUiFromConfig();
-
-        logger.info("Inizialising database manager");
-        dataStore = DataStore.getInstance();
-
-        logger.info("Binding data");
-        setupTableView();
-
-        logger.info("Setup program exit event");
-        if(primaryStage != null){
-            primaryStage.onCloseRequestProperty().addListener(((observable, oldValue, newValue) -> {
-                // TODO: Close db and FIND THE FUCK OUT WHY THIS $h1t DOES NOT TERMINATE!
-                logger.info("Terminating application");
-                client.getChat().disconnect();
-                store.close();
-                Platform.exit();
-            }));
-        }
-
-        logger.info("Setup tab change event");
-        mainTp.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
-            logger.info("Changed tab from '{}' to '{}'",
-                    mainTp.getTabs().indexOf(oldValue),
-                    mainTp.getTabs().indexOf(newValue))
-        );
-
-        logger.info("Setup add sound event");
-        addBtn.setOnAction(event -> {
-            Chatter chatter = new Chatter("NewUser");
-            openEditorWindow(chatter, "Add new user");
-            logger.info("Added chatter: {}", chatter);
-            dataStore.addChatter(chatter);
-        });
-
-        logger.info("Setup edit sound event");
-        editBtn.setOnAction(event -> {
-            Chatter selected = chattersTv.getSelectionModel().getSelectedItem();
-            if(selected != null){
-                String oldUsername = selected.getUsername();
-                openEditorWindow(selected, "Editing user " + oldUsername);
-                logger.info("Updating chatter: {} to {}", oldUsername, (!oldUsername.equals(selected.getUsername()) ? "" : " to " + selected.getUsername()));
-                dataStore.updateChatter(oldUsername, selected);
-            }
-        });
-
-        logger.info("Setup remove sound event");
-        removeBtn.setOnAction(event -> {
-            // might wanna add a safety dialog here
-            Chatter toRemove = chattersTv.getSelectionModel().getSelectedItem();
-            if(toRemove != null){
-                logger.info("Removing chatter: %s", toRemove);
-                dataStore.removeChatter(toRemove);
-            }
-        });
+    public MainController(){
 
     }
 
+    @FXML
+    public void initialize(){
+
+        logger.info("Pre-Init: Setting up scene events");
+        setupSceneEvents();
+
+        logger.info("Pre-Init: Inizialising persistance manager");
+        dataStore = DataStore.getInstance();
+
+        logger.info("Init: Binding data to view");
+        setupTableView();
+
+        logger.info("Post-Init: Starting login process");
+        client = doLogin();
+
+        logger.info("Post-Init: Restoring old config to UI components");
+        setUiFromConfig();
+    }
+
+    public void setPrimaryStage(Stage primaryStage){
+        this.primaryStage = primaryStage;
+    }
+
+    // region setup
+
     private TwitchClient doLogin() {
-        CredentialManager credentialManager = CredentialManagerBuilder.builder()
-                .withStorageBackend(new TemporaryStorageBackend())
-                .build();
 
-        TwitchIdentityProvider twitchIdentityProvider = new TwitchIdentityProvider(CLIENT_ID, "", "");
-        credentialManager.registerIdentityProvider(twitchIdentityProvider);
-        String provider = twitchIdentityProvider.getProviderName();
-        ConfigStore configStore = ConfigStore.getInstance();
-
-        OAuth2Credential credential = null;
-        OAuth2Credential result = null;
-        String errorMessage = "";
-
-        if(!configStore.getToken().equals("")){
-            // get token from store
-            String token = configStore.getToken();
-            credential = new OAuth2Credential(provider, token);
-            Optional<OAuth2Credential> storeOptional = twitchIdentityProvider.getAdditionalCredentialInformation(credential);
-            if(storeOptional.isPresent()){
-                result = storeOptional.get();
+        boolean isValid = false;
+        do {
+            Optional<LoginHelper> helperOptional = openLoginWindow();
+            if (helperOptional.isPresent()) {
+                // validate token
+                isValid = validateToken(helperOptional.get().getToken());
+                // TODO
             } else {
-                errorMessage = "Stored token is invalid, please re-enter";
+                logger.fatal("We need a token to proceed.");
+                terminate(1);
             }
-        }
+        }while (!isValid);
 
-        while(result == null){
-            Dialog<Pair<String, Boolean>> dialog = Utils.createLoginDialog(errorMessage);
-            Optional<Pair<String, Boolean>> pairOptional = dialog.showAndWait();
-            String token = "";
-            boolean save = false;
-
-            if(pairOptional.isPresent()){
-                Pair<String, Boolean> pair = pairOptional.get();
-                token = pair.getKey();
-                save = pair.getValue();
-            }
-
-            credential = new OAuth2Credential(provider, token);
-            Optional<OAuth2Credential> loginOptional = twitchIdentityProvider.getAdditionalCredentialInformation(credential);
-            if(loginOptional.isPresent()){
-                result = loginOptional.get();
-                dialog.close();
-                if(save){
-                    configStore.setToken(token);
-                }
-            }else {
-                errorMessage = "Please enter a valid token";
-            }
-        }
-
-       logger.info("Welcome %s", result.getUserName());
-        configStore.setUsername(result.getUserName());
-
-        return TwitchClientBuilder.builder()
-                .withCredentialManager(credentialManager)
-                .withChatAccount(credential)
-                .withEnableChat(true)
-                .withEnableHelix(true)
-                .withEnablePubSub(true)
-                .build();
+        return null;
     }
 
     public void setUiFromConfig(){
@@ -236,14 +147,14 @@ public class MainController {
 
         // Set links in about
         usernameLink.setText(configStore.getUsername());
-        usernameLink.setOnAction(event -> openUriInBrowser("https://www.twitch.tv/" + usernameLink.getText()));
+        usernameLink.setOnAction(event -> Utils.openUriInBrowser(BASE_URI + usernameLink.getText()));
 
         channelLink.setText(configStore.getChannel());
-        channelLink.setOnAction(event -> openUriInBrowser("https://www.twitch.tv/" + channelLink.getText()));
+        channelLink.setOnAction(event -> Utils.openUriInBrowser(BASE_URI + channelLink.getText()));
 
         channelTf.setText(configStore.getChannel());
         channelTf.textProperty().addListener(((observable, oldValue, newValue) -> {
-            logger.info("Setting channel name to %s", newValue);
+            logger.info("Setting channel name to {}", newValue);
             channelTf.setText(newValue);
             configStore.setChannel(newValue);
         }));
@@ -339,6 +250,55 @@ public class MainController {
         // Set better renderer for username, lastUsed and sounds
     }
 
+    private void setupSceneEvents(){
+        logger.info("Setup program exit event");
+
+        if(primaryStage != null){
+            primaryStage.onCloseRequestProperty().addListener(((observable, oldValue, newValue) -> {
+                terminate(0);
+            }));
+        }
+
+        logger.info("Setup tab change event");
+        mainTp.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) ->
+                logger.info("Changed tab from '{}' to '{}'",
+                        mainTp.getTabs().indexOf(oldValue),
+                        mainTp.getTabs().indexOf(newValue))
+        );
+
+        logger.info("Setup add sound event");
+        addBtn.setOnAction(event -> {
+            Chatter chatter = new Chatter("NewUser");
+            openEditorWindow(chatter, "Add new user");
+            logger.info("Added chatter: {}", chatter);
+            dataStore.addChatter(chatter);
+        });
+
+        logger.info("Setup edit sound event");
+        editBtn.setOnAction(event -> {
+            Chatter selected = chattersTv.getSelectionModel().getSelectedItem();
+            if(selected != null){
+                String oldUsername = selected.getUsername();
+                openEditorWindow(selected, "Editing user " + oldUsername);
+                logger.info("Updating chatter: {} to {}", oldUsername, (!oldUsername.equals(selected.getUsername()) ? "" : " to " + selected.getUsername()));
+                dataStore.updateChatter(oldUsername, selected);
+            }
+        });
+
+        logger.info("Setup remove sound event");
+        removeBtn.setOnAction(event -> {
+            // might wanna add a safety dialog here
+            Chatter toRemove = chattersTv.getSelectionModel().getSelectedItem();
+            if(toRemove != null){
+                logger.info("Removing chatter: {}", toRemove);
+                dataStore.removeChatter(toRemove);
+            }
+        });
+    }
+
+    // endregion
+    // region class-bound utility
+
     private void playTestSound(MixerHelper mixerInfo){
         logger.info("Playing test sound on %s", mixerInfo);
         // TODO: play sound on selected mixer
@@ -355,23 +315,6 @@ public class MainController {
             i++;
         }
         return -1;
-    }
-
-    public void setPrimaryStage(Stage primaryStage){
-        this.primaryStage = primaryStage;
-    }
-
-    private void openUriInBrowser(String uri){
-        if (isDesktopSupported()) {
-            var desktop = getDesktop();
-            if(desktop.isSupported(Action.BROWSE)){
-                try {
-                    desktop.browse(new URI(uri));
-                } catch (Exception e) {
-                    logger.info("Not able to open browser: {}", e.getMessage());
-                }
-            }
-        }
     }
 
     private void openEditorWindow(Chatter chatter, String title){
@@ -392,4 +335,52 @@ public class MainController {
             logger.info("Error opening editor window:%n %s: %2$s", e.getClass().getSimpleName(), e.getMessage());
         }
     }
+
+    private Optional<LoginHelper> openLoginWindow(){
+        Optional<LoginHelper> optional = Optional.empty();
+
+        try {
+            final LoginHelper helper = new LoginHelper();
+            final FXMLLoader loader = new FXMLLoader(getClass().getResource("/LoginWindow.fxml"));
+            final Parent root = loader.load();
+            final LoginController controller = loader.getController();
+            final Stage popupStage = new Stage();
+
+            controller.bind(helper);
+            controller.setStage(popupStage);
+            popupStage.setScene(new Scene(root));
+            popupStage.initOwner(primaryStage);
+            popupStage.initModality(Modality.APPLICATION_MODAL);
+            popupStage.setTitle("Login");
+            popupStage.showAndWait();
+
+            optional = Optional.of(helper);
+        }catch (IOException e){
+            logger.fatal("Error loading 'loginWindow.fxml': \n {}:{}", e.getClass().getSimpleName(), e.getMessage());
+            terminate(1);
+        }
+
+        return optional;
+    }
+
+    private boolean validateToken(String token){
+
+
+        return false;
+    }
+
+    private void terminate(int code){
+        if(code != 0){
+            System.exit(code);
+        }
+
+        logger.info("Terminating application");
+        client.getChat().disconnect();
+        logger.info("Disconnected chat");
+        dataStore.close();
+        logger.info("Disconnect datasource");
+        Platform.exit();
+    }
+
+    // endregion
 }
