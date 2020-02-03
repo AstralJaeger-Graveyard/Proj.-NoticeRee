@@ -18,11 +18,11 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.astraljaeger.noticeree.Configuration;
 import org.astraljaeger.noticeree.Utils;
 import org.astraljaeger.noticeree.datatools.ConfigStore;
 import org.astraljaeger.noticeree.datatools.DataStore;
 import org.astraljaeger.noticeree.datatools.data.Chatter;
-import org.astraljaeger.noticeree.datatools.data.LoginHelper;
 import org.astraljaeger.noticeree.datatools.data.MixerHelper;
 
 import javax.sound.sampled.AudioSystem;
@@ -38,7 +38,6 @@ import java.util.stream.Collectors;
 public class MainController {
 
     private static final Logger logger = LogManager.getLogger(MainController.class);
-    private static final String CLIENT_ID = "i76h7g9dys23tnsp4q5qbc9vezpwfb";
     private static final String BASE_URI = "https://www.twitch.tv/";
 
     // region FXML Fields
@@ -96,16 +95,9 @@ public class MainController {
     DataStore dataStore;
     MixerHelper device;
     LoginController loginController;
-    CredentialManager credentialManager;
-    TwitchIdentityProvider twitchIdentityProvider;
-
-
 
     public MainController(){
-        credentialManager = CredentialManagerBuilder.builder()
-                .build();
-        twitchIdentityProvider = new TwitchIdentityProvider(CLIENT_ID, "", "");
-        credentialManager.registerIdentityProvider(twitchIdentityProvider);
+
     }
 
     @FXML
@@ -121,7 +113,7 @@ public class MainController {
         setupTableView();
 
         logger.info("Post-Init: Starting login process");
-        client = doLogin();
+        doLogin();
 
         logger.info("Post-Init: Restoring old config to UI components");
         setUiFromConfig();
@@ -133,14 +125,9 @@ public class MainController {
 
     // region setup
 
-    private TwitchClient doLogin() {
+    private void doLogin() {
 
-        // Create credential manager, provider and register provider
-
-
-
-
-        return null;
+        client = openLoginWindow();
     }
 
     public void setUiFromConfig(){
@@ -187,13 +174,13 @@ public class MainController {
             if(configuredMixer != null) {
                 int index = findMixerInfo(audioOutputCb.getItems(), configuredMixer);
                 if (index != -1) {
-                    logger.info("Found stored playback device: [%d] %s", index, configuredMixer);
+                    logger.info("Found stored playback device: [{}] {}}", index, configuredMixer);
                     audioOutputCb.getSelectionModel().select(index);
                 }
             }
             else {
                 // TODO: Consider giving a window to tell the user to configure a playback device
-                logger.info("No playback device set, defaulting to 1st found device: %s", ((Mixer)audioOutputCb.getItems().get(0)).getMixerInfo().getName());
+                logger.info("No playback device set, defaulting to 1st found device: {}", ((Mixer)audioOutputCb.getItems().get(0)).getMixerInfo().getName());
                 audioOutputCb.getSelectionModel().select(0);
             }
         }
@@ -214,9 +201,9 @@ public class MainController {
                 .collect(Collectors.toList());
         String devices = results.stream()
                 .map(Mixer::getMixerInfo)
-                .map(info -> "\t - " + info.getName() + " <> " + info.getDescription())
+                .map(info -> "\t - " + info.getName() + ": " + info.getDescription())
                 .collect(Collectors.joining("\n"));
-        logger.info("Found devices [{}]: %n {}", devices.length(), devices);
+        logger.info("Found devices {}: \n {}", results.size(), devices);
         return results;
     }
 
@@ -301,7 +288,7 @@ public class MainController {
     // region class-bound utility
 
     private void playTestSound(MixerHelper mixerInfo){
-        logger.info("Playing test sound on %s", mixerInfo);
+        logger.info("Playing test sound on {}", mixerInfo);
         // TODO: play sound on selected mixer
 
     }
@@ -333,35 +320,41 @@ public class MainController {
             popupStage.setTitle(title);
             popupStage.showAndWait();
         }catch (IOException e){
-            logger.info("Error opening editor window:%n %s: %2$s", e.getClass().getSimpleName(), e.getMessage());
+            logger.info("Error opening editor window:\n {}}: {}", e.getClass().getSimpleName(), e.getMessage());
         }
     }
 
-    private Optional<LoginHelper> openLoginWindow(){
-        Optional<LoginHelper> optional = Optional.empty();
+    /**
+     * Opens a login window and retieves token
+     * @return TwitchClient with authentified chat account or null (will terminate application in that case)
+     */
+    private TwitchClient openLoginWindow(){
 
         try {
-            final LoginHelper helper = new LoginHelper(credentialManager, twitchIdentityProvider.getProviderName());
             final FXMLLoader loader = new FXMLLoader(getClass().getResource("/LoginWindow.fxml"));
             final Parent root = loader.load();
             final LoginController controller = loader.getController();
             final Stage popupStage = new Stage();
 
-            controller.bind(helper);
             controller.setStage(popupStage);
             popupStage.setScene(new Scene(root));
             popupStage.initOwner(primaryStage);
             popupStage.initModality(Modality.APPLICATION_MODAL);
             popupStage.setTitle("Login");
             popupStage.showAndWait();
+            return controller.getClient();
 
-            optional = Optional.of(helper);
         }catch (IOException e){
-            logger.fatal("Error loading 'loginWindow.fxml': \n {}:{}", e.getClass().getSimpleName(), e.getMessage());
+            logger.fatal(
+                "Error loading 'loginWindow.fxml': \n>Exception: {}: {}\n >Cause: {}",
+                e.getClass().getSimpleName(),
+                e.getMessage().replace('\n', (char)0),
+                e.getCause()
+            );
             terminate(1);
         }
 
-        return optional;
+        return null;
     }
 
     private void terminate(int code){
