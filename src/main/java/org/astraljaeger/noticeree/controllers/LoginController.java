@@ -7,7 +7,6 @@ import com.github.twitch4j.TwitchClient;
 import com.github.twitch4j.TwitchClientBuilder;
 import com.github.twitch4j.auth.providers.TwitchIdentityProvider;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import java.awt.Color;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -16,18 +15,17 @@ import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.GridPane;
-import javafx.scene.paint.Paint;
 import javafx.stage.Stage;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.astraljaeger.noticeree.Configuration;
 import org.astraljaeger.noticeree.Utils;
-import org.astraljaeger.noticeree.datatools.data.LoginHelper;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
+import org.astraljaeger.noticeree.datatools.ConfigStore;
 
 public class LoginController {
 
@@ -53,7 +51,7 @@ public class LoginController {
     private CredentialManager credentialManager;
     private TwitchIdentityProvider identityProvider;
 
-    private final Pattern pattern = Pattern.compile("^(oauth:)([a-z\\d]{30})");
+    private final Pattern validTokenPattern = Pattern.compile("^(oauth:)([a-z\\d]{30})");
     private Stage stage;
 
     public LoginController(){
@@ -71,13 +69,13 @@ public class LoginController {
 
         loginBtn.setDisable(true);
         loginBtn.setOnAction(event -> {
-            probeToken();
+            probeToken(tokenBox.getText());
         });
 
         descriptionLbl.setOnAction(event -> Utils.openUriInBrowser("https://twitchapps.com/tmi/"));
 
         tokenBox.textProperty().addListener((observable, oldValue, newValue) -> {
-            if(pattern.matcher(newValue).matches()){
+            if(validTokenPattern.matcher(newValue).matches()){
                 logger.info("Token syntax: is valid.");
                 loginBtn.setDisable(false);
             }else {
@@ -95,13 +93,23 @@ public class LoginController {
         controls = new ArrayList<>();
         controls.addAll(layoutPane.getChildren());
 
+        checkStoredToken();
     }
 
     public void setStage(Stage stage){
         this.stage = stage;
     }
 
-    private void probeToken(){
+    private void checkStoredToken(){
+        logger.info("Checking if a token was previously stored");
+        ConfigStore configStore = ConfigStore.getInstance();
+        if (!configStore.getToken().equals("")){
+            saveTokenBox.setSelected(true);
+            probeToken(configStore.getToken());
+        }
+    }
+
+    private void probeToken(String token){
         long start = System.nanoTime();
         logger.info("Start token probing");
         disableControls();
@@ -111,14 +119,11 @@ public class LoginController {
         executorService.submit(()->{
             logger.info("Starting parallel probe");
             Optional<OAuth2Credential> credentialOptional = Optional.empty();
-            try {
-                OAuth2Credential inputCredentials = new OAuth2Credential(
-                    identityProvider.getProviderName(), tokenBox.getText());
-                credentialOptional = identityProvider
-                    .getAdditionalCredentialInformation(inputCredentials);
-            }catch (Exception e){
-                logger.fatal("{}: {}\n{}", e.getClass().getSimpleName(), e.getMessage(), e.getCause());
-            }
+
+            OAuth2Credential inputCredentials = new OAuth2Credential(
+                identityProvider.getProviderName(), token);
+            credentialOptional = identityProvider
+                .getAdditionalCredentialInformation(inputCredentials);
 
             logger.info("Login took: {}ms",(System.nanoTime()-start)/1000000.0);
             if(credentialOptional.isPresent()){
@@ -126,6 +131,7 @@ public class LoginController {
                 logger.info("Probing successful! Welcome {} \n" +
                         "Creating client, cleaning up and handing over control.",
                     credentialOptional.get().getUserName());
+                storeToken(token);
                 hideErrorLabel();
                 buildTwitchClient(credentialOptional.get());
             }else {
@@ -169,7 +175,12 @@ public class LoginController {
         });
     }
 
-    public void buildTwitchClient(OAuth2Credential checkedCredential){
+    private void storeToken(String token){
+        if(saveTokenBox.isSelected())
+            ConfigStore.getInstance().setToken(token);
+    }
+
+    private void buildTwitchClient(OAuth2Credential checkedCredential){
         Platform.runLater(() -> {
             logger.info("Building TwitchClient:\nchat:true\nhelix:true\nkraken:true\npubsub:true\nevent-threads:4");
             client = TwitchClientBuilder.builder()
