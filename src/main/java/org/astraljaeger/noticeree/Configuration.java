@@ -8,6 +8,8 @@ import java.io.File;
 
 public class Configuration {
 
+
+    public static final String CLIENT_ID = "i76h7g9dys23tnsp4q5qbc9vezpwfb";
     public static final String APP_LOCATION = "NoticeRee";
     public static final String CONFIG_LOCATION = "config";
     public static final String DATA_LOCATION = "data";
