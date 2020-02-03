@@ -17,13 +17,13 @@
         <Logger name="org.astraljaeger" level="debug" additivity="false">
             <AppenderRef ref="LogToConsole"/>
         </Logger>
-        <Logger name="com.github.philippheuer.events4j" additivity="false">
+        <Logger name="com.github.philippheuer.events4j" level="info" additivity="false">
             <AppenderRef ref="LogToConsole"/>
         </Logger>
-        <Logger name="twitch4j" additivity="false">
+        <Logger name="twitch4j" level="info" additivity="false">
             <AppenderRef ref="LogToConsole"/>
         </Logger>
-        <Root level="all">
+        <Root level="debug">
             <AppenderRef ref="LogToConsole"/>
         </Root>
     </Loggers>
