@@ -15,7 +15,7 @@
 
 <AnchorPane xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.astraljaeger.noticeree.controllers.LoginController">
    <children>
-      <GridPane AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+      <GridPane fx:id="layoutPane" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
         <columnConstraints>
           <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="75.0" />
           <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="280.0" />
@@ -37,12 +37,8 @@
             </Label>
             <Label text="Token:" GridPane.rowIndex="1" />
             <PasswordField fx:id="tokenBox" promptText="oauth:******************************" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-            <Hyperlink fx:id="getTokenLink" text="Get a token here" GridPane.columnSpan="2147483647" GridPane.rowIndex="3" />
-            <ProgressIndicator fx:id="loginIndicator" GridPane.columnSpan="2147483647" GridPane.halignment="CENTER" GridPane.rowSpan="2147483647" GridPane.valignment="CENTER">
-               <GridPane.margin>
-                  <Insets />
-               </GridPane.margin>
-            </ProgressIndicator>
+            <Hyperlink fx:id="descriptionLbl" text="Get a token here" GridPane.columnSpan="2147483647" GridPane.rowIndex="3" />
+            <ProgressIndicator fx:id="loginIndicator" GridPane.columnIndex="1" GridPane.columnSpan="2147483647" GridPane.halignment="CENTER" GridPane.rowIndex="3" GridPane.rowSpan="2147483647" GridPane.valignment="CENTER" />
          </children>
          <padding>
             <Insets bottom="5.0" left="5.0" right="5.0" top="5.0" />
