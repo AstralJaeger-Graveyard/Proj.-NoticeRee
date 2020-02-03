@@ -38,13 +38,16 @@ dependencies {
     implementation 'org.dizitart:nitrite:3.3.0'
 
     // twitch api wrapper
-    implementation 'com.github.twitch4j:twitch4j:1.0.0-alpha.17'
+    implementation 'com.github.twitch4j:twitch4j:1.0.0-alpha.18'
 
     // Encrypted property store
     implementation 'org.jasypt:jasypt:1.9.2'
 
-    // Additional controls for fx
+    // Additional controls for fx (ControlsFX)
     implementation 'org.controlsfx:controlsfx:11.0.1'
+
+    // Preferences control for fx (PreferencesFX)
+    implementation 'com.dlsc.preferencesfx:preferencesfx-core:11.6.0'
 
     // Project Reactor
     implementation 'io.projectreactor:reactor-core:3.3.1.RELEASE'
