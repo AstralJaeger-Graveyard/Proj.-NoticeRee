@@ -1,0 +1,21 @@
+name: Build
+# This workflow is triggered on pushed to the repository
+on: [push]
+
+jobs:
+  build:
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        java: [11, 12]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/setup-java@v1
+      with:
+        java-version: ${{ matrix.java }}
+    - name: Build Gradle wrapper
+      run: gradle wrapper
+    - name: Build with wrapper
+      run: ./gradlew build
