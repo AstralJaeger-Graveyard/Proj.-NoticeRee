@@ -56,7 +56,7 @@ public class LoginController {
 
     public LoginController(){
         executorService = Executors.newSingleThreadScheduledExecutor(
-            new ThreadFactoryBuilder().setNameFormat("login-thread-%d").build());
+            new ThreadFactoryBuilder().setNameFormat("NoticeRee Login %d").build());
         credentialManager = CredentialManagerBuilder.builder()
             .build();
         identityProvider = new TwitchIdentityProvider(Configuration.CLIENT_ID, "", "");
