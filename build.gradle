@@ -15,7 +15,7 @@ group = 'org.astraljaeger'
 version = '1.0-ALPHA'
 sourceCompatibility = 11
 
-applicationDefaultJvmArgs = ["-XX:+UseG1GC"]
+applicationDefaultJvmArgs = ["-XX:+UseG1GC", "-XX:+UnlockExperimentalVMOptions", "-XX:+EnableJVMCI", "-XX:+UseJVMCICompiler"]
 
 repositories {
     mavenCentral()
