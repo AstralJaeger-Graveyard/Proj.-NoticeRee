@@ -12,7 +12,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -208,7 +207,7 @@ public class MainController {
 
             // Commands
             logger.info("Executing commands");
-            noticemeCommand(event);
+            noticeMeCommand(event);
             changeGreetingMessage(event);
             infoGreetingMessage(event);
             aLittleExtra(event);
@@ -377,26 +376,29 @@ public class MainController {
                 client.getChat().sendMessage(targetChannel.get(), chatter.getWelcomeMessage());
                 greeted.add(username);
             }
+        }else {
+            Chatter newGuy = new Chatter(event.getUser().getName());
+            dataStore.addChatter(newGuy);
         }
     }
 
-    private void noticemeCommand(ChannelMessageEvent event){
+    private void noticeMeCommand(ChannelMessageEvent event){
         if(event.getMessage().startsWith("!noticeme") &&
             isPermitted(event)){
             Optional<Chatter> chatterOptional = dataStore.findChatter(event.getUser().getName());
             if(chatterOptional.isPresent()){
                 Chatter chatter = chatterOptional.get();
                 if(chatter.getSounds().isEmpty()){
-                    client.getChat().sendMessage(targetChannel.get(), "@" + chatter.getUsername() + " sorry but you dont have a sound yet!");
-                    return;
+                    String sound = chatter.getSounds().get(0).getFile().getPath();
+                    logger.info("Queuing {} for {}", sound, chatter.getUsername());
+                    queueSound(sound);
                 }
 
-                String sound = chatter.getSounds().get(0).getFile().getPath();
-                logger.info("Queuing {} for {}", sound, chatter.getUsername());
-                queueSound(sound);
-            }else {
-                Chatter newGuy = new Chatter(event.getUser().getName());
-                dataStore.addChatter(newGuy);
+                client.getChat()
+                    .sendMessage(
+                    targetChannel.get(),
+                    "@" + chatter.getUsername() + " sorry but you dont have a sound yet!"
+                );
             }
         }
     }
