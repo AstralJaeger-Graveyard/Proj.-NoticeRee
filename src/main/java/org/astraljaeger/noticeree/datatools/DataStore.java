@@ -4,6 +4,7 @@
 
 package org.astraljaeger.noticeree.datatools;
 
+import java.util.Optional;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import lombok.Getter;
@@ -126,6 +127,15 @@ public class DataStore {
             for(Sound s : updated.getSounds())
                 soundCollection.insert(sound2Doc(s));
         }
+    }
+
+    // TODO: Query from database not from list.
+    //  This will break when pagination is introduced.
+    public synchronized Optional<Chatter> findChatter(String username){
+        return getChattersList()
+            .stream()
+            .filter(chatter->chatter.getUsername().equals(username))
+            .findFirst();
     }
 
     /**

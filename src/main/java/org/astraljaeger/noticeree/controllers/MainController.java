@@ -1,11 +1,25 @@
 package org.astraljaeger.noticeree.controllers;
 
-import com.github.philippheuer.credentialmanager.CredentialManager;
-import com.github.philippheuer.credentialmanager.CredentialManagerBuilder;
 import com.github.twitch4j.TwitchClient;
-import com.github.twitch4j.auth.providers.TwitchIdentityProvider;
+import com.github.twitch4j.chat.events.channel.ChannelMessageEvent;
+import com.github.twitch4j.common.enums.CommandPermission;
 import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import javafx.application.Platform;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -16,9 +30,13 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.astraljaeger.noticeree.Configuration;
 import org.astraljaeger.noticeree.Utils;
 import org.astraljaeger.noticeree.datatools.ConfigStore;
 import org.astraljaeger.noticeree.datatools.DataStore;
@@ -33,12 +51,14 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import reactor.core.Disposable;
 
 @SuppressWarnings({"unused"})
 public class MainController {
 
     private static final Logger logger = LogManager.getLogger(MainController.class);
     private static final String BASE_URI = "https://www.twitch.tv/";
+    private static final String DEVELOPER = "astraljaeger";
 
     // region FXML Fields
     @FXML
@@ -90,19 +110,61 @@ public class MainController {
     public TextField channelTf;
     // endregion
 
+    private StringProperty targetChannel;
+
     Stage primaryStage;
     TwitchClient client;
     DataStore dataStore;
-    MixerHelper device;
+    MixerHelper device;                         // The selected mixer to play a sound on
     LoginController loginController;
+    ExecutorService executorService;
+
+    List<Disposable> events;                    // The event disposables to kill the whole thing
+    List<String> greeted;                       // The already greeted users
+    List<CommandPermission> permitted;          // The permission level a user needs to have
+    Map<String, Runnable> builtInCommands;      // Some built-in commands
 
     public MainController(){
+        // Configuration properties (Will be moved to a dedicated Config object later)
+        if(ConfigStore.getInstance().getChannel().equals("")){
+            ConfigStore.getInstance().setChannel("astarjaeger");
+        }
 
+        targetChannel = new SimpleStringProperty();
+        targetChannel.set(ConfigStore.getInstance().getChannel());
+
+        ThreadFactory factory = new ThreadFactoryBuilder()
+            .setNameFormat("NoticeRee Audio System %d")
+            .build();
+
+        executorService = new ThreadPoolExecutor(
+            1,
+            1,
+            0L,
+            TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<Runnable>(),
+            factory
+        );
+
+        builtInCommands = new HashMap<>();
+        builtInCommands.put("!focus", ()->queueResource("/000.wav"));
+        builtInCommands.put("!NeverMe", ()->queueResource("/001.wav"));
+        builtInCommands.put("!SpanishMe", ()->queueResource("/002.wav"));
+        builtInCommands.put("!SpookyMe", ()->queueResource("/003.wav"));
+        builtInCommands.put("!TrollMe", ()->queueResource("/004.wav"));
+        builtInCommands.put("!ImperialMe", ()->queueResource("/005.wav"));
+        builtInCommands.put("Hello there!", ()->queueResource("/006.wav"));
+
+        permitted = new ArrayList<>();
+        permitted.add(CommandPermission.BROADCASTER);
+        permitted.add(CommandPermission.SUBSCRIBER);
+
+        events = new ArrayList<>();
+        greeted = Collections.synchronizedList(new ArrayList<>());
     }
 
     @FXML
     public void initialize(){
-
         logger.info("Pre-Init: Setting up scene events");
         setupSceneEvents();
 
@@ -113,7 +175,7 @@ public class MainController {
         setupTableView();
 
         logger.info("Post-Init: Starting login process");
-        doLogin();
+        doLoginAndSetup();
 
         logger.info("Post-Init: Restoring old config to UI components");
         setUiFromConfig();
@@ -125,9 +187,32 @@ public class MainController {
 
     // region setup
 
-    private void doLogin() {
-
+    private void doLoginAndSetup() {
         client = openLoginWindow();
+        if(client == null){
+            logger.fatal("Something went horribly wrong creating the twitch client");
+            terminate(2);
+        }
+
+        client.getChat().joinChannel(targetChannel.get());
+        client.getChat().sendMessage(targetChannel.get(), "NoticeRee started! All of your messages will from now on be checked by HAL9000");
+        events.add(client.getEventManager().onEvent(ChannelMessageEvent.class).subscribe(event -> {
+            logger.info("[{}: {}, {}: {}]",
+                event.getChannel().getName(),
+                event.getPermissions(),
+                event.getUser().getName(),
+                event.getMessage());
+
+            // greet
+            greetUser(event);
+
+            // Commands
+            logger.info("Executing commands");
+            noticemeCommand(event);
+            changeGreetingMessage(event);
+            infoGreetingMessage(event);
+            aLittleExtra(event);
+        }));
     }
 
     public void setUiFromConfig(){
@@ -149,9 +234,7 @@ public class MainController {
 
         // Get list of audio devices and set configured device
         List<Mixer> devices = getPlaybackDevices();
-        if(devices.isEmpty()) {
-
-            // Collect devices
+        if(!devices.isEmpty()) {
             audioOutputCb.setItems(FXCollections.observableArrayList(
                     devices.stream()
                             .map(mixer -> new MixerHelper(
@@ -174,19 +257,20 @@ public class MainController {
             if(configuredMixer != null) {
                 int index = findMixerInfo(audioOutputCb.getItems(), configuredMixer);
                 if (index != -1) {
-                    logger.info("Found stored playback device: [{}] {}}", index, configuredMixer);
+                    logger.info("Found stored playback device: [{}] {}", index, configuredMixer);
                     audioOutputCb.getSelectionModel().select(index);
                 }
             }
-            else {
+            else
+            {
                 // TODO: Consider giving a window to tell the user to configure a playback device
-                logger.info("No playback device set, defaulting to 1st found device: {}", ((Mixer)audioOutputCb.getItems().get(0)).getMixerInfo().getName());
+                logger.info("No playback device set, defaulting to 1st found device: {}", (audioOutputCb.getItems().get(0)));
                 audioOutputCb.getSelectionModel().select(0);
             }
         }
         else {
             // TODO: flag error that no output devices were found
-            logger.info("No playback devices were found!");
+            logger.error("No playback devices were found!");
         }
     }
 
@@ -199,11 +283,6 @@ public class MainController {
                 .map(AudioSystem::getMixer)
                 .filter(mixer -> mixer.isLineSupported(playbackLine))
                 .collect(Collectors.toList());
-        String devices = results.stream()
-                .map(Mixer::getMixerInfo)
-                .map(info -> "\t - " + info.getName() + ": " + info.getDescription())
-                .collect(Collectors.joining("\n"));
-        logger.info("Found devices {}: \n {}", results.size(), devices);
         return results;
     }
 
@@ -285,7 +364,116 @@ public class MainController {
     }
 
     // endregion
+
+    // region Chat reading, parsing and reactions
+
+    private void greetUser(ChannelMessageEvent event){
+        String username = event.getUser().getName();
+        if(!greeted.contains(username) && isPermitted(event)){
+            Optional<Chatter> chatterOptional = dataStore.findChatter(username);
+            if(chatterOptional.isPresent()){
+                Chatter chatter = chatterOptional.get();
+                logger.info("Greeting user: {} - {}", username, chatter.getWelcomeMessage());
+                client.getChat().sendMessage(targetChannel.get(), chatter.getWelcomeMessage());
+                greeted.add(username);
+            }
+        }
+    }
+
+    private void noticemeCommand(ChannelMessageEvent event){
+        if(event.getMessage().startsWith("!noticeme") &&
+            isPermitted(event)){
+            Optional<Chatter> chatterOptional = dataStore.findChatter(event.getUser().getName());
+            if(chatterOptional.isPresent()){
+                Chatter chatter = chatterOptional.get();
+                if(chatter.getSounds().isEmpty()){
+                    client.getChat().sendMessage(targetChannel.get(), "@" + chatter.getUsername() + " sorry but you dont have a sound yet!");
+                    return;
+                }
+
+                String sound = chatter.getSounds().get(0).getFile().getPath();
+                logger.info("Queuing {} for {}", sound, chatter.getUsername());
+                queueSound(sound);
+            }else {
+                Chatter newGuy = new Chatter(event.getUser().getName());
+                dataStore.addChatter(newGuy);
+            }
+        }
+    }
+
+    private void changeGreetingMessage(ChannelMessageEvent event){
+        if(event.getMessage().startsWith("!welcomemsg") && isPermitted(event)){
+            logger.info("User {} wants to change his greeting to {}", event.getUser().getName(), event.getMessage().replace("!welcomemsg ", ""));
+
+        }
+    }
+
+    private void infoGreetingMessage(ChannelMessageEvent event){
+        if (event.getMessage().startsWith("!welcomeinfo")){
+            client.getChat().sendMessage(targetChannel.get(), "Proj. NoticeRee by AstralJaeger");
+        }
+    }
+
+    private void aLittleExtra(ChannelMessageEvent event){
+        if(event.getUser().getName().equals(DEVELOPER) || event.getUser().getName().equals(event.getChannel().getName())) {
+            if(builtInCommands.containsKey(event.getMessage())){
+                builtInCommands.get(event.getMessage()).run();
+            }
+        }
+    }
+
+    private boolean isPermitted(ChannelMessageEvent event){
+        return event.getUser().getName().equals(DEVELOPER) ||
+            event.getPermissions().stream().anyMatch(permitted::contains);
+    }
+
+    // endregion
+
     // region class-bound utility
+
+    private void queueResource(String resource){
+        logger.info("Queuing resource: {} - {}", resource, getClass().getResource(resource));
+        executorService.submit(()->playSound(getClass().getResource(resource)));
+    }
+
+    private void queueSound(String sound){
+        logger.info("Queuing file: {}", sound);
+        executorService.submit(()-> {
+            try {
+                playSound(new URL(sound));
+            } catch (MalformedURLException e) {
+                logger.error("Error playing sound", e);
+            }
+        });
+    }
+
+    private void playSound(URL sound){
+        logger.info("Playing sound now: {}", sound);
+        try {
+            AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(sound);
+            AudioFormat format = audioInputStream.getFormat();
+            DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
+            SourceDataLine souce = (SourceDataLine) AudioSystem.getLine(info);
+            souce.open(format);
+            souce.start();
+            int readBytes = 0;
+            byte[] buffer = new byte[1024];
+            while (readBytes != -1){
+                readBytes = audioInputStream.read(buffer, 0, buffer.length);
+                if(readBytes >= 0){
+                    souce.write(buffer, 0, readBytes);
+                }
+            }
+            souce.drain();
+            souce.close();
+        }catch (UnsupportedAudioFileException e){
+            logger.error("{} is not supported by Java Media Framework", sound);
+        }catch (IOException e){
+            logger.error("Was not able to access file {}", sound);
+        }catch (LineUnavailableException e){
+            logger.error("Was not able to access audio data line");
+        }
+    }
 
     private void playTestSound(MixerHelper mixerInfo){
         logger.info("Playing test sound on {}", mixerInfo);
@@ -362,6 +550,9 @@ public class MainController {
             System.exit(code);
         }
 
+        events.stream()
+            .filter(e->!e.isDisposed())
+            .forEach(Disposable::dispose);
         logger.info("Terminating application");
         client.getChat().disconnect();
         logger.info("Disconnected chat");
@@ -372,7 +563,11 @@ public class MainController {
     }
 
     private void shutdownExecutorService(){
-        // TODO: For now now executor is used, but one might be used
+        executorService.shutdown();
+        logger.info("Awaiting executor shutdown");
+        while (!executorService.isShutdown()){
+            Utils.tryToWait(10, TimeUnit.MILLISECONDS);
+        }
         logger.info("executor service is shutdown");
     }
 
