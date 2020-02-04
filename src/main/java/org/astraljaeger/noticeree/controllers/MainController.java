@@ -29,6 +29,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.control.cell.TextFieldTableCell;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.DataLine;
@@ -180,6 +181,42 @@ public class MainController {
         setUiFromConfig();
     }
 
+    public void stop(){
+        logger.info("Calling terminate through stop");
+        terminate();
+    }
+
+    private void terminate(){
+        logger.info("Terminating application");
+
+        events.stream()
+            .filter(e->!e.isDisposed())
+            .forEach(Disposable::dispose);
+        logger.info("Disposed events");
+
+        client.getChat().disconnect();
+        logger.info("Disconnected chat-module");
+
+        //client.getPubSub().disconnect();
+        //logger.info("Disconnect pubsub-module");
+
+        dataStore.close();
+        logger.info("Disconnect datasource");
+
+        shutdownExecutorService();
+        logger.info("Application should terminate now");
+    }
+
+    private void shutdownExecutorService(){
+        long start = System.nanoTime();
+        executorService.shutdown();
+        logger.info("Awaiting executor shutdown");
+        while (!executorService.isShutdown()){
+            Utils.tryToWait(1, TimeUnit.MILLISECONDS);
+        }
+        logger.info("ExecutorService is shutdown. Took: {}ms", (System.nanoTime()-start)/1000l);
+    }
+
     public void setPrimaryStage(Stage primaryStage){
         this.primaryStage = primaryStage;
     }
@@ -190,7 +227,7 @@ public class MainController {
         client = openLoginWindow();
         if(client == null){
             logger.fatal("Something went horribly wrong creating the twitch client");
-            terminate(2);
+            stop();
         }
 
         client.getChat().joinChannel(targetChannel.get());
@@ -321,7 +358,7 @@ public class MainController {
 
         if(primaryStage != null){
             primaryStage.onCloseRequestProperty().addListener(((observable, oldValue, newValue) -> {
-                terminate(0);
+                logger.info("onCloseRequest handler called > do nothing");
             }));
         }
 
@@ -511,6 +548,7 @@ public class MainController {
             popupStage.showAndWait();
         }catch (IOException e){
             logger.info("Error opening editor window:\n {}}: {}", e.getClass().getSimpleName(), e.getMessage());
+            throw new RuntimeException(e);
         }
     }
 
@@ -541,37 +579,11 @@ public class MainController {
                 e.getMessage().replace('\n', (char)0),
                 e.getCause()
             );
-            terminate(1);
+            throw new RuntimeException(e);
         }
-
-        return null;
-    }
-
-    private void terminate(int code){
-        if(code != 0){
-            System.exit(code);
-        }
-
-        events.stream()
-            .filter(e->!e.isDisposed())
-            .forEach(Disposable::dispose);
-        logger.info("Terminating application");
-        client.getChat().disconnect();
-        logger.info("Disconnected chat");
-        dataStore.close();
-        logger.info("Disconnect datasource");
-        shutdownExecutorService();
-        Platform.exit();
-    }
-
-    private void shutdownExecutorService(){
-        executorService.shutdown();
-        logger.info("Awaiting executor shutdown");
-        while (!executorService.isShutdown()){
-            Utils.tryToWait(10, TimeUnit.MILLISECONDS);
-        }
-        logger.info("executor service is shutdown");
     }
 
     // endregion
+
+
 }

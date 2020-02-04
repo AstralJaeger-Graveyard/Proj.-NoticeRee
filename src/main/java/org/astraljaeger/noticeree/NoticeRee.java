@@ -17,21 +17,28 @@ public class NoticeRee extends Application {
         launch(args);
     }
 
+    private MainController controller;
+
     @Override
     public void start(Stage primaryStage) {
 
         try {
             final FXMLLoader loader = new FXMLLoader(getClass().getResource("/MainWindow.fxml"));
             final Parent root = loader.load();
-            MainController controller = loader.getController();
-            controller.setPrimaryStage(primaryStage);
+            controller = loader.getController();
             Scene scene = new Scene(root);
             primaryStage.setTitle("Proj. NoticeRee");
             primaryStage.setScene(scene);
+            controller.setPrimaryStage(primaryStage);
             primaryStage.show();
         }
         catch (Exception e){
             System.exit(1);
         }
+    }
+
+    @Override
+    public void stop(){
+        controller.stop();
     }
 }
