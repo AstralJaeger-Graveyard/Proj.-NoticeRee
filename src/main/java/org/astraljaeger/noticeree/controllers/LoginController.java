@@ -187,9 +187,9 @@ public class LoginController {
                 .withCredentialManager(credentialManager)
                 .withChatAccount(checkedCredential)
                 .withEnableChat(true)
-                .withEnableHelix(true)
-                .withEnableKraken(true)
-                .withEnablePubSub(true)
+                .withEnableHelix(false)
+                .withEnableKraken(false)
+                .withEnablePubSub(false)
                 .withEventManagerThreads(4)
                 .build();
 
