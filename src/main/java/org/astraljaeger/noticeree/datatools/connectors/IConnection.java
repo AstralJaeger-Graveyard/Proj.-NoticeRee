@@ -57,4 +57,11 @@ public interface IConnection {
     public default String getInfo(){
         return "<Empty connector>";
     }
+
+    /**
+     * Safe closing mechanism, needs to check
+     * if connection is already closed or not,
+     * caller will not check.
+     */
+    public void close();
 }
