@@ -11,6 +11,8 @@ import lombok.Getter;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.astraljaeger.noticeree.Configuration;
+import org.astraljaeger.noticeree.datatools.connectors.IConnection;
+import org.astraljaeger.noticeree.datatools.connectors.NitriteConnectionFactory;
 import org.astraljaeger.noticeree.datatools.data.Chatter;
 import org.astraljaeger.noticeree.datatools.data.Sound;
 import org.dizitart.no2.*;
@@ -32,7 +34,6 @@ import static org.dizitart.no2.filters.Filters.eq;
 public class DataStore {
 
     private static final Logger logger = LogManager.getLogger(DataStore.class);
-    private static final String FILE_NAME = "data.db";
 
     private static DataStore instance;
 
@@ -42,43 +43,15 @@ public class DataStore {
         return instance;
     }
 
-    private Nitrite db;
-    private NitriteCollection chatterCollection;
-    private NitriteCollection soundCollection;
-
     @Getter
     private ObservableList<Chatter> chattersList;
 
-    private static final String USERNAME = "username";
-    private static final String WELCOME_MESSAGE = "welcomeMessage";
-    private static final String LAST_USED = "lastUsed";
-
-    private static final String PRIORITY = "priority";
-    private static final String LABEL = "label";
-    private static final String NSFW = "nsfw";
-    private static final String FILE = "file";
-    private static final String ORIGINAL_FILE = "originalFile";
+    IConnection datasource;
 
     private DataStore(){
         chattersList = FXCollections.observableArrayList();
-
-        if(Configuration.USE_PERSISTANCE) {
-            checkOrCreateFolder();
-
-            db = Nitrite.builder()
-                    .filePath(Configuration.getAppDataDirectory() + FILE_NAME)
-                    .openOrCreate();
-
-            chatterCollection = db.getCollection(Chatter.class.getName());
-            if(!isIndexed(chatterCollection))
-                chatterCollection.createIndex(USERNAME, indexOptions(IndexType.Fulltext));
-
-            soundCollection = db.getCollection(Sound.class.getName());
-            if(!isIndexed(soundCollection))
-                soundCollection.createIndex(USERNAME, indexOptions(IndexType.Fulltext));
-
-            load();
-        }
+        datasource = new NitriteConnectionFactory().getConnection();
+        chattersList.addAll(datasource.getChatters());
     }
 
     /**
@@ -87,15 +60,8 @@ public class DataStore {
      */
     public synchronized void addChatter(Chatter chatter){
         logger.info("Adding new chatter: {}", chatter);
-        if(Configuration.USE_PERSISTANCE){
-            Document chatterDocument = chatter2Doc(chatter);
-            chatterCollection.insert(chatterDocument);
-            for(Sound s : chatter.getSounds()){
-                Document soundDocument = sound2Doc(s);
-                soundCollection.insert(soundDocument);
-            }
-        }
 
+        datasource.addChatter(chatter);
         chattersList.add(chatter);
     }
 
@@ -105,10 +71,8 @@ public class DataStore {
      */
     public synchronized void removeChatter(Chatter chatter){
         logger.info("Removing chatter: {}", chatter);
-        if(Configuration.USE_PERSISTANCE){
-            chatterCollection.remove(eq(USERNAME, chatter.getUsername()));
-            soundCollection.remove(eq(USERNAME, chatter.getUsername()));
-        }
+
+        datasource.removeChatter(chatter);
         chattersList.remove(chatter);
     }
 
@@ -120,13 +84,15 @@ public class DataStore {
      */
     public synchronized void updateChatter(String oldUsername, Chatter updated){
         logger.info("Updating chatter from {} to {}", oldUsername, updated.getUsername());
-        if(Configuration.USE_PERSISTANCE){
-            chatterCollection.remove(eq(USERNAME, oldUsername));
-            soundCollection.remove(eq(USERNAME, oldUsername));
-            chatterCollection.insert(chatter2Doc(updated));
-            for(Sound s : updated.getSounds())
-                soundCollection.insert(sound2Doc(s));
+        datasource.updateChatter(oldUsername, updated);
+
+        for(int i = 0; i < chattersList.size(); i++){
+            if(chattersList.get(i).getUsername().equals(oldUsername)){
+                chattersList.remove(i);
+                break;
+            }
         }
+        chattersList.add(updated);
     }
 
     // TODO: Query from database not from list.
@@ -143,9 +109,8 @@ public class DataStore {
      */
     public void close(){
         logger.info("Closing database connection");
-        if(Configuration.USE_PERSISTANCE && !db.isClosed()){
-            db.close();
-        }
+        chattersList.clear();
+        datasource.close();
     }
 
     private void checkOrCreateFolder(){
@@ -165,55 +130,4 @@ public class DataStore {
         }
     }
 
-    private void load(){
-        logger.debug("Trying to load stored data");
-        for(Document chatterDoc : chatterCollection.find(FindOptions.sort(USERNAME, SortOrder.Ascending))){
-            Chatter chatter = fromChatterDocument(chatterDoc);
-            for(Document soundDoc : soundCollection.find(eq(USERNAME, chatter.getUsername()))){
-                chatter.getSounds().add(fromSoundDocument(soundDoc));
-            }
-            chattersList.add(chatter);
-        }
-    }
-
-    private Document chatter2Doc(Chatter chatter){
-        return createDocument(USERNAME, chatter.getUsername())
-                .put(WELCOME_MESSAGE, chatter.getWelcomeMessage())
-                .put(LAST_USED, chatter.getLastUsed());
-    }
-
-    private Document sound2Doc(Sound sound){
-        return createDocument(USERNAME, sound.getUsername())
-                .put(PRIORITY, sound.getPriority())
-                .put(LABEL, sound.getLabel())
-                .put(NSFW, sound.isNsfw())
-                .put(FILE, sound.getFile().toURI().toString())
-                .put(ORIGINAL_FILE, sound.getOriginalFile().toURI().toString());
-    }
-
-    private Sound fromSoundDocument(Document doc){
-        Integer priority = doc.get(PRIORITY, Integer.class);
-        String username = doc.get(USERNAME, String.class);
-        String label = doc.get(LABEL, String.class);
-        Boolean nsfw = doc.get(NSFW, Boolean.class);
-        File originalFile = new File(doc.get(ORIGINAL_FILE, String.class));
-        return new Sound(username, priority, label, nsfw, originalFile);
-    }
-
-    private Chatter fromChatterDocument(Document doc){
-        String username = doc.get(USERNAME, String.class);
-        String message = doc.get(WELCOME_MESSAGE, String.class);
-        LocalDateTime lastUsed = doc.get(LAST_USED, LocalDateTime.class);
-        return new Chatter(username, message, new ArrayList<>(), lastUsed);
-    }
-
-    private boolean isIndexed(NitriteCollection collection){
-        Collection<Index> indices = collection.listIndices();
-        for (Index index : indices) {
-            if(index.getField().equals(USERNAME)){
-                return true;
-            }
-        }
-        return false;
-    }
 }
