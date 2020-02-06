@@ -62,15 +62,14 @@ public class NitriteConnection implements IConnection{
     }
 
     public void addChatter(Chatter chatter){
-        logger.trace("Adding new chatter {}", chatter.getUsername());
+        logger.debug("Adding new chatter {}", chatter.getUsername());
         chatterCollection.insert(chatter2Doc(chatter));
-        for(Sound sound : chatter.getSounds()){
+        for(Sound sound : chatter.getSounds())
             soundCollection.insert(sound2Doc(sound));
-        }
     }
 
     public void updateChatter(String username, Chatter chatter){
-        logger.trace("Updating chatter {} to {}", username, chatter.getUsername());
+        logger.debug("Updating chatter {} to {}", username, chatter.getUsername());
         chatterCollection.remove(eq(USERNAME, username));
         soundCollection.remove(eq(USERNAME, username));
         chatterCollection.insert(chatter2Doc(chatter));
@@ -79,13 +78,14 @@ public class NitriteConnection implements IConnection{
     }
 
     public void removeChatter(Chatter chatter){
-        logger.trace("Removing chatter {}", chatter.getUsername());
+        logger.debug("Removing chatter {}", chatter.getUsername());
         chatterCollection.remove(eq(USERNAME, chatter.getUsername()));
         soundCollection.remove(eq(USERNAME, chatter.getUsername()));
     }
 
     @Override
     public Chatter[] getChatters(int start, int limit) {
+        logger.debug("Loading chatters {} until {} from disk (Total max. {} elements)", start, start + limit, limit);
 
         List<Chatter> chatterList = new ArrayList<>();
         Cursor results = chatterCollection.find(FindOptions.limit(start, limit));
@@ -98,6 +98,8 @@ public class NitriteConnection implements IConnection{
 
     @Override
     public Chatter[] getChatters() {
+        logger.debug("Loading all chatters from disk");
+        logger.warn("Potentially dangerous operation! Should not load from disk more than once!");
 
         Cursor results = chatterCollection.find();
         List<Chatter> chatters = new ArrayList<>(results.size() + 2);
@@ -109,6 +111,7 @@ public class NitriteConnection implements IConnection{
 
     @Override
     public Optional<Chatter> getChatter(String username) {
+        logger.debug("Trying to find chatter {}", username);
         Optional<Chatter> chatterOptional = Optional.empty();
         Cursor result = chatterCollection.find(eq(USERNAME, username));
         int count = 0;
@@ -125,6 +128,13 @@ public class NitriteConnection implements IConnection{
     @Override
     public String getInfo() {
         return "Nitrite - NOsql Object database";
+    }
+
+    @Override
+    public void close() {
+        logger.debug("Trying to close database connection");
+        if(!nitrite.isClosed())
+            nitrite.close();
     }
 
     // region Utility
