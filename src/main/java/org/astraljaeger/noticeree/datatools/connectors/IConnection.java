@@ -4,6 +4,7 @@
 
 package org.astraljaeger.noticeree.datatools.connectors;
 
+import java.util.ArrayList;
 import java.util.Optional;
 import org.astraljaeger.noticeree.datatools.data.Chatter;
 
@@ -34,7 +35,13 @@ public interface IConnection {
      * @param limit the amount of chatters to return
      * @return the found chatters, empty array (length 0) if none found.
      */
-    public Chatter[] getChatter(int start, int limit);
+    public Chatter[] getChatters(int start, int limit);
+
+    /**
+     * While pagination is not fully implemented this will be used
+     * @return all chatters in database
+     */
+    public Chatter[] getChatters();
 
     /**
      * Finds chatter with specified username
